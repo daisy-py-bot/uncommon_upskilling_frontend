@@ -12,6 +12,7 @@ import Link from "next/link"
 import { useRouter } from 'next/navigation';
 import { buildApiUrl } from "@/lib/utils"
 import NotificationModal from '@/components/ui/NotificationModal';
+import { supabase } from '@/lib/superbase'
 
 export default function AddNewCourse() {
   const [categories, setCategories] = useState<string[]>([]);
@@ -53,31 +54,23 @@ export default function AddNewCourse() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  // Upload file to backend and return the URL
+  // Upload file to Supabase and return the URL
   const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    const token = localStorage.getItem('admin_token')
-    if (!token) {
-      throw new Error('No admin token found')
-    }
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}.${fileExt}`
+    const filePath = `course-thumbnails/${fileName}`
 
-    const response = await fetch(buildApiUrl('upload/course-thumbnail'), {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: formData
-    })
+    const { data, error } = await supabase.storage
+      .from('media')
+      .upload(filePath, file)
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'Failed to upload file')
-    }
+    if (error) throw error
 
-    const data = await response.json()
-    return data.url // Return the uploaded file URL from backend
+    const { data: publicUrl } = supabase.storage
+      .from('media')
+      .getPublicUrl(filePath)
+
+    return publicUrl.publicUrl
   }
 
   // Save handler with file upload

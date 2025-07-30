@@ -31,7 +31,7 @@ function getModulesData() {
 }
 
 // Utility: Transform localStorage data to API payload for /courses/create-with-modules-lessons
-export function transformCourseDataForApi(localData: any, userId: string) {
+function transformCourseDataForApi(localData: any, userId: string) {
   return {
     title: localData.title,
     category: localData.category,
