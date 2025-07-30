@@ -60,11 +60,26 @@ export default function AddNewCourse() {
     const fileName = `${Date.now()}.${fileExt}`
     const filePath = `course-thumbnails/${fileName}`
 
+    console.log('Uploading course thumbnail to Supabase:', {
+      bucket: 'media',
+      path: filePath,
+      fileSize: file.size,
+      fileType: file.type
+    })
+
     const { data, error } = await supabase.storage
       .from('media')
-      .upload(filePath, file)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
 
-    if (error) throw error
+    if (error) {
+      console.error('Supabase upload error:', error)
+      throw new Error(`Upload failed: ${error.message}`)
+    }
+
+    console.log('Course thumbnail upload successful:', data)
 
     const { data: publicUrl } = supabase.storage
       .from('media')
