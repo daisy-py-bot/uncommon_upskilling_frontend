@@ -37,25 +37,31 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
       fileType: file.type
     })
 
-    const { data, error } = await supabase.storage
-      .from('media')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
+    try {
+      const { data, error } = await supabase.storage
+        .from('media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
-    if (error) {
-      console.error('Supabase upload error:', error)
-      throw new Error(`Upload failed: ${error.message}`)
+      if (error) {
+        console.error('Supabase upload error:', error)
+        throw new Error(`Upload failed: ${error.message}`)
+      }
+
+      console.log('Lesson media upload successful:', data)
+
+      const { data: publicUrl } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath)
+
+      console.log('Public URL generated:', publicUrl.publicUrl)
+      return publicUrl.publicUrl
+    } catch (err) {
+      console.error('Upload function error:', err)
+      throw err
     }
-
-    console.log('Lesson media upload successful:', data)
-
-    const { data: publicUrl } = supabase.storage
-      .from('media')
-      .getPublicUrl(filePath)
-
-    return publicUrl.publicUrl
   }
 
   // Handle URL input submission

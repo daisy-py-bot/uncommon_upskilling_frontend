@@ -98,7 +98,7 @@ export default function CourseCard({ id, title, totalLessons, duration, descript
               }</span>
               <span>{duration} mins</span>
             </div>
-            <p className="text-gray-700 text-sm mb-4 flex-grow">{description}</p>
+            <p className="text-gray-700 text-sm mb-4 flex-grow line-clamp-3">{description}</p>
             <Button className="w-full bg-uncommonBlue hover:bg-uncommonBlue-dark text-white" onClick={handleEnrol} disabled={enrolling}>
               {enrolling ? 'Enrolling...' : 'Enrol'}
             </Button>

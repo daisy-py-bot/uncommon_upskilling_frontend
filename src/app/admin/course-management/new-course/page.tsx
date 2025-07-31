@@ -25,6 +25,7 @@ export default function AddNewCourse() {
   // State for image upload and preview
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [thumbnailUrl, setThumbnailUrl] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter();
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -67,25 +68,31 @@ export default function AddNewCourse() {
       fileType: file.type
     })
 
-    const { data, error } = await supabase.storage
-      .from('media')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
+    try {
+      const { data, error } = await supabase.storage
+        .from('media')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
-    if (error) {
-      console.error('Supabase upload error:', error)
-      throw new Error(`Upload failed: ${error.message}`)
+      if (error) {
+        console.error('Supabase upload error:', error)
+        throw new Error(`Upload failed: ${error.message}`)
+      }
+
+      console.log('Course thumbnail upload successful:', data)
+
+      const { data: publicUrl } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath)
+
+      console.log('Public URL generated:', publicUrl.publicUrl)
+      return publicUrl.publicUrl
+    } catch (err) {
+      console.error('Upload function error:', err)
+      throw err
     }
-
-    console.log('Course thumbnail upload successful:', data)
-
-    const { data: publicUrl } = supabase.storage
-      .from('media')
-      .getPublicUrl(filePath)
-
-    return publicUrl.publicUrl
   }
 
   // Save handler with file upload
@@ -107,7 +114,7 @@ export default function AddNewCourse() {
         learningObjectives,
         level,
         badges,
-        previewUrl: uploadedThumbnailUrl || previewUrl, // Use uploaded URL or existing preview URL
+        previewUrl: uploadedThumbnailUrl || previewUrl || thumbnailUrl, // Use uploaded URL, existing preview URL, or direct URL
       };
       
       localStorage.setItem('newCourseData', JSON.stringify(courseData));
@@ -377,34 +384,69 @@ export default function AddNewCourse() {
                 <p className="text-sm text-muted-foreground">Add your course's cover image</p>
               </CardHeader>
               <CardContent>
-                <div
-                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg h-[300px] text-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition"
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onClick={handleBrowseClick}
-                >
-                  {previewUrl ? (
-                    <img src={previewUrl} alt="Preview" className="mb-4 rounded-lg object-contain max-h-40" />
-                  ) : (
-                    <div className="mb-4 p-4 bg-gray-100 rounded-lg flex flex-col items-center">
-                      <ImageIcon className="h-12 w-12 text-gray-400" />
-                      <p className="text-lg font-semibold mt-2">Upload Photo</p>
+                <div className="space-y-4">
+                  {/* URL Input Option */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Or enter image URL directly:</label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="url"
+                        placeholder="https://example.com/image.jpg"
+                        value={thumbnailUrl || ''}
+                        onChange={(e) => {
+                          setThumbnailUrl(e.target.value);
+                          if (e.target.value) {
+                            setPreviewUrl(e.target.value);
+                            markDirty();
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          if (thumbnailUrl) {
+                            setPreviewUrl(thumbnailUrl);
+                            markDirty();
+                          }
+                        }}
+                      >
+                        Use URL
+                      </Button>
                     </div>
-                  )}
-                  <p className="text-sm text-muted-foreground mb-2">JPG, PNG, max 2MB</p>
-                  <p className="text-sm text-muted-foreground">
-                    Drop your document here, or{' '}
-                    <span className="text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); handleBrowseClick(); }}>
-                      click to browse
-                    </span>
-                  </p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={e => { handleFileChange(e); markDirty(); }}
-                  />
+                  </div>
+
+                  {/* File Upload Option */}
+                  <div
+                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg h-[300px] text-center cursor-pointer bg-gray-50 hover:bg-gray-100 transition"
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onClick={handleBrowseClick}
+                  >
+                    {previewUrl ? (
+                      <img src={previewUrl} alt="Preview" className="mb-4 rounded-lg object-contain max-h-40" />
+                    ) : (
+                      <div className="mb-4 p-4 bg-gray-100 rounded-lg flex flex-col items-center">
+                        <ImageIcon className="h-12 w-12 text-gray-400" />
+                        <p className="text-lg font-semibold mt-2">Upload Photo</p>
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground mb-2">JPG, PNG, max 2MB</p>
+                    <p className="text-sm text-muted-foreground">
+                      Drop your document here, or{' '}
+                      <span className="text-blue-600 hover:underline" onClick={e => { e.stopPropagation(); handleBrowseClick(); }}>
+                        click to browse
+                      </span>
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={e => { handleFileChange(e); markDirty(); }}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -422,6 +464,7 @@ export default function AddNewCourse() {
                 setLevel('');
                 setBadges([]);
                 setPreviewUrl(null);
+                setThumbnailUrl('');
                 showModal('Course reset!');
               }}
             >
