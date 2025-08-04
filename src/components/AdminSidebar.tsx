@@ -2,7 +2,7 @@
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Home, Users, GraduationCap, ClipboardList, MessageCircle, User, LogOut } from "lucide-react"
+import { Home, Users, GraduationCap, ClipboardList, MessageCircle, User, LogOut, Award } from "lucide-react"
 
 const AdminSidebar = () => {
   const router = useRouter();
@@ -37,6 +37,10 @@ const AdminSidebar = () => {
         <Link href="/admin/feedback" className={`flex items-center space-x-2 p-3 rounded-lg font-medium ${pathname === '/admin/feedback' ? 'bg-blue-700 text-white' : 'hover:bg-blue-600 text-white transition-colors'}` }>
           <MessageCircle className="h-5 w-5" />
           <span>Manage Feedback</span>
+        </Link>
+        <Link href="/admin/badges" className={`flex items-center space-x-2 p-3 rounded-lg font-medium ${pathname === '/admin/badges' ? 'bg-blue-700 text-white' : 'hover:bg-blue-600 text-white transition-colors'}` }>
+          <Award className="h-5 w-5" />
+          <span>Badges</span>
         </Link>
         <Link href="/admin/profile" className={`flex items-center space-x-2 p-3 rounded-lg font-medium ${pathname === '/admin/profile' ? 'bg-blue-700 text-white' : 'hover:bg-blue-600 text-white transition-colors'}` }>
           <User className="h-5 w-5" />
