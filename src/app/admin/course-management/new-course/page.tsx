@@ -15,10 +15,10 @@ import NotificationModal from '@/components/ui/NotificationModal';
 import { supabase } from '@/lib/superbase'
 
 export default function AddNewCourse() {
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState('');
-  const [category, setCategory] = useState('');
+  const [categoryId, setCategoryId] = useState('');
 
   // State to manage learning objectives
   const [learningObjectives, setLearningObjectives] = useState<string[]>([""]) // Start with one empty objective
@@ -110,7 +110,7 @@ export default function AddNewCourse() {
       const courseData = {
         title: titleRef.current?.value || '',
         description: descriptionRef.current?.value || '',
-        category,
+        categoryId,
         learningObjectives,
         level,
         badges,
@@ -140,7 +140,7 @@ export default function AddNewCourse() {
   useEffect(() => {
     setCategoriesLoading(true);
     setCategoriesError('');
-    fetch(buildApiUrl('courses/categories'))
+    fetch(buildApiUrl('categories'))
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch categories');
         return res.json();
@@ -182,7 +182,8 @@ export default function AddNewCourse() {
         const data = JSON.parse(saved);
         if (data.title && titleRef.current) titleRef.current.value = data.title;
         if (data.description && descriptionRef.current) descriptionRef.current.value = data.description;
-        if (data.category) setCategory(data.category);
+        if (data.categoryId) setCategoryId(data.categoryId);
+        else if (data.category) setCategoryId(data.category); // Backward compatibility
         if (data.learningObjectives) setLearningObjectives(data.learningObjectives);
         if (data.level) setLevel(data.level);
         if (data.badges) setBadges(data.badges);
@@ -293,13 +294,13 @@ export default function AddNewCourse() {
                   >
                     Category
                   </label>
-                  <Select onValueChange={v => { setCategory(v); markDirty(); }} value={category} required disabled={categoriesLoading || !!categoriesError}>
+                  <Select onValueChange={v => { setCategoryId(v); markDirty(); }} value={categoryId} required disabled={categoriesLoading || !!categoriesError}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={categoriesLoading ? "Loading categories..." : categoriesError ? "Failed to load categories" : "Select category"} />
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -459,7 +460,7 @@ export default function AddNewCourse() {
                 localStorage.removeItem('newCourseData');
                 if (titleRef.current) titleRef.current.value = '';
                 if (descriptionRef.current) descriptionRef.current.value = '';
-                setCategory('');
+                setCategoryId('');
                 setLearningObjectives(['']);
                 setLevel('');
                 setBadges([]);
@@ -476,7 +477,7 @@ export default function AddNewCourse() {
                 const courseData = {
                   title: titleRef.current?.value || '',
                   description: descriptionRef.current?.value || '',
-                  category,
+                  categoryId,
                   learningObjectives,
                   level,
                   badges,
