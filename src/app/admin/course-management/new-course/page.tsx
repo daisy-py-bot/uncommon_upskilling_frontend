@@ -55,56 +55,69 @@ export default function AddNewCourse() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  // Upload file to Supabase and return the URL
+    // Upload file to Supabase via server API route
   const uploadFile = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}.${fileExt}`
-    const filePath = `course-thumbnails/${fileName}`
-
-    console.log('Uploading course thumbnail to Supabase:', {
-      bucket: 'media',
-      path: filePath,
-      fileSize: file.size,
-      fileType: file.type
-    })
+    console.log('=== UPLOAD DEBUG START ===');
+    console.log('File object:', file);
+    console.log('File name:', file.name);
+    console.log('File size:', file.size);
+    console.log('File type:', file.type);
 
     try {
-      const { data, error } = await supabase.storage
-        .from('media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
+      console.log('Starting upload via API route...');
+      
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (error) {
-        console.error('Supabase upload error:', error)
-        throw new Error(`Upload failed: ${error.message}`)
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('API response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API upload error:', errorData);
+        throw new Error(`Upload failed: ${errorData.error || 'Unknown error'}`);
       }
 
-      console.log('Course thumbnail upload successful:', data)
-
-      const { data: publicUrl } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath)
-
-      console.log('Public URL generated:', publicUrl.publicUrl)
-      return publicUrl.publicUrl
+      const data = await response.json();
+      console.log('API upload successful:', data);
+      console.log('Final public URL:', data.url);
+      
+      console.log('=== UPLOAD DEBUG END ===');
+      return data.url;
     } catch (err) {
-      console.error('Upload function error:', err)
-      throw err
+      console.error('=== UPLOAD ERROR ===');
+      console.error('Upload function error:', err);
+      console.error('Error type:', typeof err);
+      console.error('Error message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack trace');
+      console.error('=== UPLOAD ERROR END ===');
+      throw err;
     }
   }
 
   // Save handler with file upload
   async function handleSave() {
+    console.log('=== SAVE DEBUG START ===');
+    console.log('Thumbnail file:', thumbnail);
+    console.log('Preview URL:', previewUrl);
+    console.log('Thumbnail URL:', thumbnailUrl);
+    
     try {
       let uploadedThumbnailUrl = null
       
       // Upload thumbnail if selected
       if (thumbnail) {
+        console.log('Thumbnail selected, starting upload...');
         setModalMessage('Uploading thumbnail...')
         setModalOpen(true)
         uploadedThumbnailUrl = await uploadFile(thumbnail)
+        console.log('Upload completed, URL:', uploadedThumbnailUrl);
+      } else {
+        console.log('No thumbnail file selected');
       }
 
       const courseData = {
@@ -117,11 +130,19 @@ export default function AddNewCourse() {
         previewUrl: uploadedThumbnailUrl || previewUrl || thumbnailUrl, // Use uploaded URL, existing preview URL, or direct URL
       };
       
+      console.log('Course data to save:', courseData);
+      console.log('Final preview URL:', courseData.previewUrl);
+      
       localStorage.setItem('newCourseData', JSON.stringify(courseData));
       setHasUnsavedChanges(false);
       setModalMessage('Course saved!');
       setModalOpen(true);
+      console.log('=== SAVE DEBUG END ===');
     } catch (error: any) {
+      console.error('=== SAVE ERROR ===');
+      console.error('Save error:', error);
+      console.error('Error message:', error.message);
+      console.error('=== SAVE ERROR END ===');
       setModalMessage(`Error: ${error.message}`);
       setModalOpen(true);
     }
@@ -194,22 +215,58 @@ export default function AddNewCourse() {
 
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('=== FILE CHANGE DEBUG ===');
+    console.log('File input event:', e);
+    console.log('Files:', e.target.files);
+    
     const file = e.target.files?.[0]
     if (file) {
+      console.log('Selected file:', file);
+      console.log('File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
       setThumbnail(file)
-      setPreviewUrl(URL.createObjectURL(file))
+      const objectUrl = URL.createObjectURL(file)
+      console.log('Created object URL:', objectUrl);
+      setPreviewUrl(objectUrl)
       markDirty()
+      console.log('=== FILE CHANGE DEBUG END ===');
+    } else {
+      console.log('No file selected');
+      console.log('=== FILE CHANGE DEBUG END ===');
     }
   }
 
   // Handle drag and drop
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    console.log('=== DROP DEBUG ===');
+    console.log('Drop event:', e);
+    console.log('Data transfer files:', e.dataTransfer.files);
+    
     e.preventDefault()
     const file = e.dataTransfer.files?.[0]
     if (file) {
+      console.log('Dropped file:', file);
+      console.log('File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
+      
       setThumbnail(file)
-      setPreviewUrl(URL.createObjectURL(file))
+      const objectUrl = URL.createObjectURL(file)
+      console.log('Created object URL from drop:', objectUrl);
+      setPreviewUrl(objectUrl)
       markDirty()
+      console.log('=== DROP DEBUG END ===');
+    } else {
+      console.log('No file dropped');
+      console.log('=== DROP DEBUG END ===');
     }
   }
 
@@ -473,25 +530,62 @@ export default function AddNewCourse() {
             </Button>
             <Button
               className="bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
-              onClick={() => {
-                const courseData = {
-                  title: titleRef.current?.value || '',
-                  description: descriptionRef.current?.value || '',
-                  categoryId,
-                  learningObjectives,
-                  level,
-                  badges,
-                  previewUrl,
-                };
-                localStorage.setItem('newCourseData', JSON.stringify(courseData));
-                setHasUnsavedChanges(false);
-                setModalMessage('Course saved!');
-                setModalOpen(true);
-                setModalColor('green');
-                setTimeout(() => {
-                  setModalColor(undefined);
-                  router.push('/admin/course-management/new-module');
-                }, 2000);
+              onClick={async () => {
+                console.log('=== NEXT BUTTON CLICKED ===');
+                console.log('Thumbnail file:', thumbnail);
+                console.log('Preview URL:', previewUrl);
+                
+                try {
+                  let uploadedThumbnailUrl = null;
+                  
+                  // Upload thumbnail if selected
+                  if (thumbnail) {
+                    console.log('Thumbnail selected, starting upload...');
+                    setModalMessage('Uploading thumbnail...');
+                    setModalOpen(true);
+                    try {
+                      uploadedThumbnailUrl = await uploadFile(thumbnail);
+                      console.log('Upload completed, URL:', uploadedThumbnailUrl);
+                    } catch (uploadError) {
+                      console.log('Upload failed, using blob URL as fallback:', uploadError);
+                      // Use the blob URL as fallback if upload fails
+                      uploadedThumbnailUrl = previewUrl;
+                      setModalMessage('Upload failed, using local preview. Please configure Supabase properly.');
+                    }
+                  } else {
+                    console.log('No thumbnail file selected');
+                  }
+
+                  const courseData = {
+                    title: titleRef.current?.value || '',
+                    description: descriptionRef.current?.value || '',
+                    categoryId,
+                    learningObjectives,
+                    level,
+                    badges,
+                    previewUrl: uploadedThumbnailUrl || previewUrl || thumbnailUrl,
+                  };
+                  
+                  console.log('Course data to save:', courseData);
+                  console.log('Final preview URL:', courseData.previewUrl);
+                  
+                  localStorage.setItem('newCourseData', JSON.stringify(courseData));
+                  setHasUnsavedChanges(false);
+                  setModalMessage('Course saved!');
+                  setModalOpen(true);
+                  setModalColor('green');
+                  setTimeout(() => {
+                    setModalColor(undefined);
+                    router.push('/admin/course-management/new-module');
+                  }, 2000);
+                } catch (error: any) {
+                  console.error('=== NEXT BUTTON ERROR ===');
+                  console.error('Error:', error);
+                  console.error('Error message:', error.message);
+                  setModalMessage(`Error: ${error.message}`);
+                  setModalOpen(true);
+                  setModalColor('red');
+                }
               }}
             >
               <span>Next</span>
