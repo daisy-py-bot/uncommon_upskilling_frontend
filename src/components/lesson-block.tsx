@@ -24,47 +24,60 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
 
-  // Upload file to Supabase and return the URL
-  const uploadFile = async (file: File): Promise<string> => {
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Date.now()}.${fileExt}`
-    const filePath = `lesson-media/${fileName}`
+  // Debug log to see current lesson state
+  console.log(`📋 Lesson ${lessonNumber} current state:`, {
+    title: lesson.title,
+    mediaUrl: lesson.mediaUrl,
+    type: lesson.type,
+    mediaCount: lesson.media?.length || 0
+  });
 
-    console.log('Uploading lesson media to Supabase:', {
-      bucket: 'media',
-      path: filePath,
-      fileSize: file.size,
-      fileType: file.type
-    })
+  // Upload file to Supabase via server API route (UPDATED)
+  const uploadFile = async (file: File): Promise<string> => {
+    console.log('🚀 === LESSON UPLOAD DEBUG START (UPDATED VERSION) === 🚀');
+    console.log('✅ Using NEW API route upload method');
+    console.log('File object:', file);
+    console.log('File name:', file.name);
+    console.log('File size:', file.size);
+    console.log('File type:', file.type);
 
     try {
-      const { data, error } = await supabase.storage
-        .from('media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
+      console.log('🔄 Starting lesson upload via API route (UPDATED)...');
+      
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (error) {
-        console.error('Supabase upload error:', error)
-        throw new Error(`Upload failed: ${error.message}`)
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('API response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API upload error:', errorData);
+        throw new Error(`Upload failed: ${errorData.error || 'Unknown error'}`);
       }
 
-      console.log('Lesson media upload successful:', data)
-
-      const { data: publicUrl } = supabase.storage
-        .from('media')
-        .getPublicUrl(filePath)
-
-      console.log('Public URL generated:', publicUrl.publicUrl)
-      return publicUrl.publicUrl
+      const data = await response.json();
+      console.log('API upload successful:', data);
+      console.log('Final public URL:', data.url);
+      
+      console.log('=== LESSON UPLOAD DEBUG END (UPDATED) ===');
+      return data.url;
     } catch (err) {
-      console.error('Upload function error:', err)
-      throw err
+      console.error('❌ === LESSON UPLOAD ERROR (UPDATED VERSION) === ❌');
+      console.error('🚨 Upload function error:', err);
+      console.error('Error type:', typeof err);
+      console.error('Error message:', err instanceof Error ? err.message : 'Unknown error');
+      console.error('Error stack:', err instanceof Error ? err.stack : 'No stack trace');
+      console.error('❌ === LESSON UPLOAD ERROR END (UPDATED VERSION) === ❌');
+      throw err;
     }
   }
 
-  // Handle URL input submission
+  // Handle URL input submission - supports multiple media
   const handleUrlSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!urlInput.trim()) return;
@@ -78,17 +91,36 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
     else if (url.match(/\.pdf$/i)) fileType = 'pdf';
     else if (url.match(/\.(doc|docx)$/i)) fileType = 'doc';
 
-    // Update lesson with URL
-    onChange({
-      ...lesson,
+    // Initialize media array if it doesn't exist
+    const currentMedia = lesson.media || [];
+    
+    // Add new media item with URL
+    const newMediaItem = {
+      id: Date.now(),
       fileName: `External Media (${fileType})`,
       fileSize: 'External',
       fileType,
-      type: fileType === 'other' ? (lesson.type || 'video') : fileType,
       filePreviewUrl: url,
       mediaUrl: url,
-      file: null,
+      uploaded: true
+    };
+
+    // Update lesson with new media item
+    const updatedLesson = {
+      ...lesson,
+      media: [...currentMedia, newMediaItem],
+      mediaUrl: url, // Set the primary mediaUrl for backend
+      type: fileType // Update lesson type based on file type
+    };
+    
+    console.log('🎯 UPDATING LESSON WITH EXTERNAL URL:', {
+      oldMediaUrl: lesson.mediaUrl,
+      newMediaUrl: url,
+      fileType: fileType,
+      lessonTitle: lesson.title
     });
+    
+    onChange(updatedLesson);
 
     setUrlInput('');
     setShowUrlInput(false);
@@ -99,7 +131,7 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
     onChange({ ...lesson, [field]: value });
   };
 
-  // Media fields with file upload
+  // Media fields with file upload - supports multiple files
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       const file = event.target.files[0];
@@ -112,15 +144,29 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
       else if (file.type === 'application/pdf') fileType = 'pdf';
       else if (file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') fileType = 'doc';
       
-      // Update lesson with temporary preview
-      onChange({
-        ...lesson,
+      // Initialize media array if it doesn't exist
+      const currentMedia = lesson.media || [];
+      
+      // Clear any existing YouTube URLs when uploading a file
+      if (lesson.mediaUrl && lesson.mediaUrl.includes('youtube.com')) {
+        console.log('🧹 Clearing existing YouTube URL:', lesson.mediaUrl);
+      }
+      
+      // Add new media item with temporary preview
+      const newMediaItem = {
+        id: Date.now(),
         fileName: file.name,
         fileSize: (file.size / 1024 / 1024).toFixed(1) + 'MB',
         fileType,
-        type: fileType === 'other' ? (lesson.type || 'video') : fileType,
         filePreviewUrl: tempUrl,
         file: file, // Store the actual file for upload
+        uploaded: false
+      };
+      
+      // Update lesson with new media item
+      onChange({
+        ...lesson,
+        media: [...currentMedia, newMediaItem]
       });
 
       // Upload file to backend
@@ -128,31 +174,39 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
         setUploading(true);
         const uploadedUrl = await uploadFile(file);
         
-        // Update lesson with the actual uploaded URL
-        onChange({
+        // Update the specific media item with uploaded URL
+        const updatedMedia = currentMedia.map((item: any) => 
+          item.id === newMediaItem.id 
+            ? { ...item, filePreviewUrl: uploadedUrl, mediaUrl: uploadedUrl, file: null, uploaded: true }
+            : item
+        );
+        
+        // Update lesson with both media array and mediaUrl for backend compatibility
+        const updatedLesson = {
           ...lesson,
-          fileName: file.name,
-          fileSize: (file.size / 1024 / 1024).toFixed(1) + 'MB',
-          fileType,
-          type: fileType === 'other' ? (lesson.type || 'video') : fileType,
-          filePreviewUrl: uploadedUrl, // Use the uploaded URL instead of blob URL
-          mediaUrl: uploadedUrl, // Store the actual media URL
-          file: null, // Clear the file object
+          media: updatedMedia,
+          mediaUrl: uploadedUrl, // Set the primary mediaUrl for backend
+          type: fileType // Update lesson type based on file type
+        };
+        
+        console.log('🎯 UPDATING LESSON WITH SUPABASE URL:', {
+          oldMediaUrl: lesson.mediaUrl,
+          newMediaUrl: uploadedUrl,
+          fileType: fileType,
+          lessonTitle: lesson.title
         });
+        
+        onChange(updatedLesson);
         
         // Clean up the temporary blob URL
         URL.revokeObjectURL(tempUrl);
       } catch (error: any) {
         console.error('Upload failed:', error);
-        // Revert to no file if upload fails
+        // Remove the failed media item
+        const updatedMedia = currentMedia.filter((item: any) => item.id !== newMediaItem.id);
         onChange({
           ...lesson,
-          fileName: null,
-          fileSize: null,
-          fileType: null,
-          filePreviewUrl: null,
-          mediaUrl: null,
-          file: null,
+          media: updatedMedia
         });
         URL.revokeObjectURL(tempUrl);
         alert(`Upload failed: ${error.message}`);
@@ -162,48 +216,72 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
     }
   };
 
-  const handleDeleteMedia = () => {
-    if (lesson.filePreviewUrl) {
-      URL.revokeObjectURL(lesson.filePreviewUrl);
+  const handleDeleteMedia = (mediaId?: number) => {
+    const currentMedia = lesson.media || [];
+    
+    if (mediaId) {
+      // Delete specific media item
+      const mediaToDelete = currentMedia.find((item: any) => item.id === mediaId);
+      if (mediaToDelete && mediaToDelete.filePreviewUrl && !mediaToDelete.uploaded) {
+        URL.revokeObjectURL(mediaToDelete.filePreviewUrl);
+      }
+      
+      const updatedMedia = currentMedia.filter((item: any) => item.id !== mediaId);
+      onChange({
+        ...lesson,
+        media: updatedMedia
+      });
+    } else {
+      // Delete all media (legacy support)
+      currentMedia.forEach((item: any) => {
+        if (item.filePreviewUrl && !item.uploaded) {
+          URL.revokeObjectURL(item.filePreviewUrl);
+        }
+      });
+      onChange({
+        ...lesson,
+        media: [],
+        mediaUrl: null // Clear the primary mediaUrl when all media is deleted
+      });
     }
-    onChange({
-      ...lesson,
-      fileName: null,
-      fileSize: null,
-      fileType: null,
-      filePreviewUrl: null,
-    });
   };
 
-  const renderMediaPreview = () => {
-    if (!lesson.filePreviewUrl) {
+  const renderMediaPreview = (mediaItem: any) => {
+    if (!mediaItem.filePreviewUrl) {
       return (
         <div className="mb-4 p-4 bg-gray-100 rounded-lg">
           <ImageIcon className="h-12 w-12 text-gray-400" />
         </div>
       );
     }
-    switch (lesson.fileType) {
+    switch (mediaItem.fileType) {
       case 'image':
         return (
           <img
-            src={lesson.filePreviewUrl || "/placeholder.svg"}
+            src={mediaItem.filePreviewUrl || "/placeholder.svg"}
             alt="Media Preview"
             className="max-h-full max-w-full object-contain"
           />
         );
       case 'video':
         return (
-          <video controls src={lesson.filePreviewUrl} className="max-h-full max-w-full object-contain">
-            Your browser does not support the video tag.
-          </video>
+          <div className="w-full h-full flex items-center justify-center">
+            <video 
+              controls 
+              src={mediaItem.filePreviewUrl} 
+              className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
+              preload="metadata"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
         );
       case 'pdf':
         return (
           <div className="flex flex-col items-center justify-center h-full w-full text-gray-500">
             <FileText className="h-16 w-16 mb-2" />
             <p>PDF Preview (not directly supported in browser)</p>
-            <p className="text-sm">{lesson.fileName}</p>
+            <p className="text-sm">{mediaItem.fileName}</p>
           </div>
         );
       default:
@@ -211,7 +289,7 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
           <div className="flex flex-col items-center justify-center h-full w-full text-gray-500">
             <File className="h-16 w-16 mb-2" />
             <p>File Preview</p>
-            <p className="text-sm">{lesson.fileName}</p>
+            <p className="text-sm">{mediaItem.fileName}</p>
           </div>
         );
     }
@@ -341,36 +419,57 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
               <p className="text-sm text-muted-foreground">
                 Add your course media below. This could be a PDF, video, or image.
               </p>
-              {lesson.fileName ? (
-                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg h-[350px] text-center relative overflow-hidden w-full">
-                  {uploading ? (
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                      <p className="text-sm text-muted-foreground">Uploading...</p>
-                    </div>
-                  ) : (
-                    <>
-                      {renderMediaPreview()}
-                      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-white/80 backdrop-blur-sm p-2 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          {lesson.fileType === "image" && <ImageIcon className="h-4 w-4 text-gray-600" />}
-                          {lesson.fileType === "video" && <Video className="h-4 w-4 text-gray-600" />}
-                          {lesson.fileType === "pdf" && <FileText className="h-4 w-4 text-gray-600" />}
-                          {lesson.fileType === "other" && <File className="h-4 w-4 text-gray-600" />}
-                          <div>
-                            <p className="font-medium text-sm">{lesson.fileName}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {lesson.fileSize === 'External' ? 'External URL' : lesson.fileSize}
-                            </p>
-                          </div>
+              {lesson.media && lesson.media.length > 0 ? (
+                <div className="space-y-4">
+                  {lesson.media.map((mediaItem: any, index: number) => (
+                    <div key={mediaItem.id} className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg h-[350px] text-center relative overflow-hidden w-full">
+                      {uploading && !mediaItem.uploaded ? (
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Uploading...</p>
                         </div>
-                        <Button variant="outline" onClick={handleDeleteMedia} className="text-red-500 hover:bg-red-100">
-                          <Trash className="h-4 w-4" />
-                          <span className="sr-only">Delete Media</span>
-                        </Button>
-                      </div>
-                    </>
-                  )}
+                      ) : (
+                        <>
+                          {renderMediaPreview(mediaItem)}
+                          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-white/80 backdrop-blur-sm p-2 rounded-lg">
+                                                      <div className="flex items-center space-x-2">
+                            {mediaItem.fileType === "image" && <ImageIcon className="h-4 w-4 text-gray-600" />}
+                            {mediaItem.fileType === "video" && <Video className="h-4 w-4 text-gray-600" />}
+                            {mediaItem.fileType === "pdf" && <FileText className="h-4 w-4 text-gray-600" />}
+                            {mediaItem.fileType === "other" && <File className="h-4 w-4 text-gray-600" />}
+                            <div>
+                              <p className="font-medium text-sm">{mediaItem.fileName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {mediaItem.fileSize === 'External' ? 'External URL' : mediaItem.fileSize}
+                                {mediaItem.uploaded && mediaItem.fileType === 'video' && (
+                                  <span className="ml-1 text-green-600">✓ Uploaded</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                            <Button 
+                              variant="outline" 
+                              onClick={() => handleDeleteMedia(mediaItem.id)} 
+                              className="text-red-500 hover:bg-red-100"
+                            >
+                              <Trash className="h-4 w-4" />
+                              <span className="sr-only">Delete Media</span>
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => document.getElementById(`file-upload-${lessonNumber}`)?.click()}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add More Media
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg h-[350px] text-center w-full">

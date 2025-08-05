@@ -55,24 +55,31 @@ function transformCourseDataForApi(localData: any, userId: string) {
       duration: mod.lessons
         ? mod.lessons.reduce((sum: number, l: any) => sum + (parseInt(l.duration) || 0), 0)
         : 0,
-      lessons: (mod.lessons || []).map((lesson: any, lIdx: number) => ({
-        title: lesson.title,
-        content: lesson.notes || "",
-        mediaUrl: lesson.filePreviewUrl || "",
-        transcript: lesson.transcript || [], // Fill if you have transcript data
-        notes: lesson.notes
-          ? [{ title: "Notes", content: lesson.notes }]
-          : [],
-        resources: (lesson.additionalResources || []).map((res: any) => ({
-          title: res.title,
-          description: res.description || "",
-          url: res.link,
-          type: res.type || "article"
-        })),
-        duration: parseInt(lesson.duration) || 0,
-        type: (lesson.type || 'video').toLowerCase(),
-        order: lIdx + 1
-      }))
+      lessons: (mod.lessons || []).map((lesson: any, lIdx: number) => {
+        console.log(`📤 Preparing lesson for API:`, {
+          lessonTitle: lesson.title,
+          lessonMediaUrl: lesson.mediaUrl,
+          lessonType: lesson.type
+        });
+        return {
+          title: lesson.title,
+          content: lesson.notes || "",
+          mediaUrl: lesson.mediaUrl || "",
+          transcript: lesson.transcript || [], // Fill if you have transcript data
+          notes: lesson.notes
+            ? [{ title: "Notes", content: lesson.notes }]
+            : [],
+          resources: (lesson.additionalResources || []).map((res: any) => ({
+            title: res.title,
+            description: res.description || "",
+            url: res.link,
+            type: res.type || "article"
+          })),
+          duration: parseInt(lesson.duration) || 0,
+          type: (lesson.type || 'video').toLowerCase(),
+          order: lIdx + 1
+        };
+      })
     }))
   };
 }
@@ -123,6 +130,15 @@ export default function CoursePreview() {
       const localData = JSON.parse(localStorage.getItem('newCourseData') || '{}');
       localData.modules = JSON.parse(localStorage.getItem('newModulesData') || '[]');
       const payload = transformCourseDataForApi(localData, userId);
+      
+      console.log('🚀 FINAL PAYLOAD BEING SENT TO BACKEND:', payload);
+      console.log('📋 LESSONS IN PAYLOAD:', payload.modules?.map((mod: any) => 
+        mod.lessons?.map((lesson: any) => ({
+          title: lesson.title,
+          mediaUrl: lesson.mediaUrl,
+          type: lesson.type
+        }))
+      ));
       const res = await fetch(buildApiUrl('courses/create-with-modules-lessons'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
