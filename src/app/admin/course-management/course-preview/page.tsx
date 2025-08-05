@@ -77,7 +77,7 @@ function transformCourseDataForApi(localData: any, userId: string) {
           })),
           duration: parseInt(lesson.duration) || 0,
           type: (lesson.type || 'video').toLowerCase(),
-          order: lIdx + 1
+          order: lIdx + 1 // <-- Ensure unique order for each lesson
         };
       })
     }))

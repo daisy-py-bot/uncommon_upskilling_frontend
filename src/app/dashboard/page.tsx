@@ -280,7 +280,7 @@ export default function StudentDashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredOngoing.map((item: any) => (
-                  <Card key={item.id} className="overflow-hidden shadow-md h-full flex flex-col">
+                  <Card key={item.id} className="overflow-hidden shadow-md">
                     <div className="aspect-video bg-gray-200">
                       <img
                         src={item.course.thumbnailUrl || DEFAULT_COURSE_IMAGE}
@@ -289,7 +289,7 @@ export default function StudentDashboard() {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <CardContent className="p-4 flex flex-col h-full">
+                    <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-bold text-gray-900 mb-1">{item.course.title}</h3>
                         <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">{item.course.level}</span>
@@ -310,18 +310,16 @@ export default function StudentDashboard() {
                         </div>
                         <Progress value={Math.round((item.progress ?? 0) * 100)} className="h-2" />
                       </div>
-                      <div className="mt-auto">
-                        <Button
-                          className="w-full bg-[#0747A1] hover:bg-[#05316e]"
-                          onClick={() => {
-                            if (item.resumeLessonId) {
-                              router.push(`/courses/${item.course.id}/learn/${item.resumeLessonId}`);
-                            }
-                          }}
-                        >
-                          Resume
-                        </Button>
-                      </div>
+                      <Button
+                        className="w-full bg-[#0747A1] hover:bg-[#05316e]"
+                        onClick={() => {
+                          if (item.resumeLessonId) {
+                            router.push(`/courses/${item.course.id}/learn/${item.resumeLessonId}`);
+                          }
+                        }}
+                      >
+                        Resume
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
@@ -353,7 +351,7 @@ export default function StudentDashboard() {
                     }
                   }
                   return (
-                    <Card key={course.id} className="overflow-hidden shadow-md h-full flex flex-col">
+                    <Card key={course.id} className="overflow-hidden shadow-md">
                       <div className="aspect-video bg-gray-200">
                       <img
                           src={course.course?.thumbnailUrl || DEFAULT_COURSE_IMAGE}
@@ -362,7 +360,7 @@ export default function StudentDashboard() {
                         className="w-full h-full object-cover"
                       />
                       </div>
-                      <CardContent className="p-4 flex flex-col h-full">
+                      <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-2">
                           <h3 className="text-lg font-bold text-gray-900 mb-1">{course.course?.title}</h3>
                           <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">{course.course?.level}</span>
@@ -383,7 +381,7 @@ export default function StudentDashboard() {
                         </div>
                         <Progress value={100} className="h-2" />
                       </div>
-                        <div className="flex flex-col gap-2 mt-auto">
+                        <div className="flex flex-col gap-2">
                           <Link href={`/courses/${course.course?.id}/learn/${firstLessonId}`}>
                           <Button variant="outline" className="w-full bg-transparent">
                             Review

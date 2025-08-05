@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import AuthModal from "@/components/ui/AuthModal"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,8 @@ export default function LandingPage() {
   const [feedback, setFeedback] = useState<any[]>([]);
   const [user, setUser] = useState<any>(null);
   const [userLoading, setUserLoading] = useState(true);
+  const [animatedStats, setAnimatedStats] = useState({ students: 0, courses: 0, categories: 0 });
+  const statsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // Check authentication status
@@ -61,6 +63,12 @@ export default function LandingPage() {
           numberOfCategories: data.numberOfCategories,
           numberOfStudents: data.numberOfStudents,
         });
+        // Set target values for animation
+        setAnimatedStats({
+          students: data.numberOfStudents || 0,
+          courses: data.numberOfCourses || 0,
+          categories: data.numberOfCategories || 0,
+        });
         setBrowseCourses(data.courses || []);
         // Transform feedback to testimonial format
         setFeedback(
@@ -77,6 +85,55 @@ export default function LandingPage() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Animate stats when they come into view
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            // Start animation when stats section is visible
+            animateStats();
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    if (statsRef.current) {
+      observer.observe(statsRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [courseStats]);
+
+  const animateStats = () => {
+    const duration = 2000; // 2 seconds
+    const steps = 120; // More steps for smoother animation
+    const stepDuration = duration / steps;
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / steps;
+
+      setAnimatedStats({
+        students: Math.floor((courseStats?.numberOfStudents || 0) * progress),
+        courses: Math.floor((courseStats?.numberOfCourses || 0) * progress),
+        categories: Math.floor((courseStats?.numberOfCategories || 0) * progress),
+      });
+
+      if (currentStep >= steps) {
+        clearInterval(interval);
+        // Set final values
+        setAnimatedStats({
+          students: courseStats?.numberOfStudents || 0,
+          courses: courseStats?.numberOfCourses || 0,
+          categories: courseStats?.numberOfCategories || 0,
+        });
+      }
+    }, stepDuration);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -212,7 +269,10 @@ export default function LandingPage() {
           {/* Left Content */}
           <div className="col-span-2 space-y-6 flex flex-col items-center md:items-start text-center md:text-left">
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-medium leading-tight">
-              continue your uncommon journey
+              <span className="bg-gradient-to-r from-amber-800 via-amber-900 to-yellow-900 bg-clip-text text-transparent animate-gradient">Continue</span>{" "}
+              your{" "}
+              <span className="text-[#0747A1]">uncommon</span>{" "}
+              journey
             </h1>
             <p className="text-xl md:text-2xl text-gray-700">
               Enhance your employability with our upskilling courses.
@@ -238,19 +298,25 @@ export default function LandingPage() {
             </div>
 
             {/* Statistics (dynamic from API) */}
-            <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start space-y-6 sm:space-y-0 sm:space-x-8 pt-8 w-full">
+            <div ref={statsRef} className="flex flex-col sm:flex-row items-center justify-center md:justify-start space-y-6 sm:space-y-0 sm:space-x-8 pt-8 w-full">
               <div className="flex flex-col items-start">
-                <span className="text-4xl font-bold">{courseStats ? courseStats.numberOfStudents : '--'}</span>
+                <span className="text-4xl font-bold text-gray-800 transition-all duration-300">
+                  {animatedStats.students.toLocaleString()}
+                </span>
                 <span className="text-gray-600">Active Students</span>
               </div>
               <div className="h-16 w-1 bg-black hidden sm:block" /> {/* Vertical divider */}
               <div className="flex flex-col items-start">
-                <span className="text-4xl font-bold">{courseStats ? courseStats.numberOfCourses : '--'}</span>
+                <span className="text-4xl font-bold text-gray-800 transition-all duration-300">
+                  {animatedStats.courses.toLocaleString()}
+                </span>
                 <span className="text-gray-600">Courses</span>
               </div>
               <div className="h-16 w-1  bg-black hidden sm:block" /> {/* Vertical divider */}
               <div className="flex flex-col items-start">
-                <span className="text-4xl font-bold">{courseStats ? courseStats.numberOfCategories : '--'}</span>
+                <span className="text-4xl font-bold text-gray-800 transition-all duration-300">
+                  {animatedStats.categories.toLocaleString()}
+                </span>
                 <span className="text-gray-600">Course Categories</span>
               </div>
             </div>

@@ -24,6 +24,7 @@ import { decodeJWT, buildApiUrl } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 type DashboardCardProps = {
   title: string;
@@ -255,6 +256,7 @@ function AdminRegisterModal({ open, onClose, onSuccess }: { open: boolean, onClo
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [admin, setAdmin] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -343,7 +345,10 @@ export default function Dashboard() {
                 <User className="h-4 w-4 mr-2" />
                 Add New Admin
               </Button>
-              <Button className="bg-[#0747A1] hover:bg-[#05316e] text-white flex items-center justify-center">
+              <Button 
+                className="bg-[#0747A1] hover:bg-[#05316e] text-white flex items-center justify-center"
+                onClick={() => router.push('/admin/course-management/new-course')}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add New Course
               </Button>
