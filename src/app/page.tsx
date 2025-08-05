@@ -19,8 +19,15 @@ export default function LandingPage() {
   const [user, setUser] = useState<any>(null);
   const [userLoading, setUserLoading] = useState(true);
   const [animatedStats, setAnimatedStats] = useState({ students: 0, courses: 0, categories: 0 });
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const statsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const heroImages = [
+    { src: "/hero_img.png", alt: "Students learning and growing" },
+    { src: "/hero_img2.png", alt: "Professional development" },
+    { src: "/hero_img3.png", alt: "Career advancement" }
+  ];
 
   // Check authentication status
   useEffect(() => {
@@ -106,6 +113,15 @@ export default function LandingPage() {
 
     return () => observer.disconnect();
   }, [courseStats]);
+
+  // Auto-slide hero images
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+    }, 4000); // Change image every 4 seconds
+
+    return () => clearInterval(interval);
+  }, [heroImages.length]);
 
   const animateStats = () => {
     const duration = 2000; // 2 seconds
@@ -264,27 +280,38 @@ export default function LandingPage() {
           </div>
         </header>
 
-        {/* Hero Section - Grid for content and image */}
-        <main className="grid grid-cols-1 md:grid-cols-3 items-center gap-8 pb-20 mt-10">
-          {/* Left Content */}
-          <div className="col-span-2 space-y-6 flex flex-col items-center md:items-start text-center md:text-left">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-medium leading-tight">
-              <span className="bg-gradient-to-r from-amber-800 via-amber-900 to-yellow-900 bg-clip-text text-transparent animate-gradient">Continue</span>{" "}
-              your{" "}
-              <span className="text-[#0747A1]">uncommon</span>{" "}
+        {/* Hero Section - Enhanced with animations and visual appeal */}
+        <main className="relative grid grid-cols-1 md:grid-cols-2 items-center gap-12 pb-20 mt-10">
+          {/* Left Content - Enhanced */}
+          <div className="space-y-8 flex flex-col items-center md:items-start text-center md:text-left relative z-10">
+            {/* Animated badge */}
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 px-4 py-2 rounded-full text-sm font-medium text-blue-700 animate-pulse">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping"></div>
+              🚀 Join 1000+ students already learning
+            </div>
+
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+              Continue your{" "}
+              {/* <span className="bg-gradient-to-r from-amber-800 via-amber-900 to-yellow-900 bg-clip-text text-transparent animate-gradient">Continue</span>{" "} */}
+              {/* your{" "} */}
+              <span className="text-[#0747A1] relative">
+                uncommon
+                <div className="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-[#0747A1] to-blue-400 rounded-full animate-pulse"></div>
+              </span>{" "}
+              {/* <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 bg-clip-text text-transparent animate-gradient">
+                journey
+              </span> */}
               journey
             </h1>
-            <p className="text-xl md:text-2xl text-gray-700">
-              Enhance your employability with our upskilling courses.
+            
+            <p className="text-xl md:text-2xl text-gray-600 leading-relaxed max-w-2xl">
+              Transform your career with cutting-edge skills. Our platform bridges the gap between bootcamp and real-world success.
             </p>
-            <div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-4 w-full">
-              <a href="#success-stories" className="w-full sm:w-auto">
-                <Button className="bg-uncommonBlue hover:bg-uncommonBlue-dark text-white px-4 py-5 rounded-md text-xs w-full">
-                Know More &gt;&gt;
-              </Button>
-              </a>
-              <Button
-                className="bg-uncommonBlue hover:bg-uncommonBlue-dark text-white px-4 py-5 rounded-md text-xs"
+
+            {/* Enhanced CTA Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center md:justify-start space-y-4 sm:space-y-0 sm:space-x-6 w-full">
+              <Button 
+                className="bg-gradient-to-r from-[#0747A1] to-blue-600 hover:from-[#05316e] hover:to-blue-700 text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 w-full sm:w-auto group"
                 onClick={() => {
                   if (user) {
                     router.push('/dashboard');
@@ -293,44 +320,124 @@ export default function LandingPage() {
                   }
                 }}
               >
-                Get Started &gt;&gt;
+                <span className="flex items-center gap-2">
+                  Get Started Now
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
               </Button>
+              
+                             <a href="#success-stories" className="w-full sm:w-auto">
+                 <Button className="bg-blue-600 border-2 border-blue-600 text-white hover:bg-[#0747A1] hover:border-[#0747A1] hover:text-white px-8 py-4 rounded-xl text-lg font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 w-full group">
+                   <span className="flex items-center gap-2">
+                     See Success Stories
+                     <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                     </svg>
+                   </span>
+                 </Button>
+               </a>
             </div>
 
-            {/* Statistics (dynamic from API) */}
-            <div ref={statsRef} className="flex flex-col sm:flex-row items-center justify-center md:justify-start space-y-6 sm:space-y-0 sm:space-x-8 pt-8 w-full">
-              <div className="flex flex-col items-start">
-                <span className="text-4xl font-bold text-gray-800 transition-all duration-300">
-                  {animatedStats.students.toLocaleString()}
+            {/* Enhanced Statistics with icons and better styling */}
+            <div ref={statsRef} className="grid grid-cols-3 gap-8 pt-8 w-full max-w-2xl">
+              <div className="flex flex-col items-center md:items-start text-center md:text-left group">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                  </svg>
+                </div>
+                <span className="text-3xl md:text-4xl font-bold text-gray-800 transition-all duration-300">
+                  {animatedStats.students.toLocaleString()}+
                 </span>
-                <span className="text-gray-600">Active Students</span>
+                <span className="text-gray-600 text-sm font-medium">Active Students</span>
               </div>
-              <div className="h-16 w-1 bg-black hidden sm:block" /> {/* Vertical divider */}
-              <div className="flex flex-col items-start">
-                <span className="text-4xl font-bold text-gray-800 transition-all duration-300">
-                  {animatedStats.courses.toLocaleString()}
+              
+              <div className="flex flex-col items-center md:items-start text-center md:text-left group">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <span className="text-3xl md:text-4xl font-bold text-gray-800 transition-all duration-300">
+                  {animatedStats.courses.toLocaleString()}+
                 </span>
-                <span className="text-gray-600">Courses</span>
+                <span className="text-gray-600 text-sm font-medium">Expert Courses</span>
               </div>
-              <div className="h-16 w-1  bg-black hidden sm:block" /> {/* Vertical divider */}
-              <div className="flex flex-col items-start">
-                <span className="text-4xl font-bold text-gray-800 transition-all duration-300">
-                  {animatedStats.categories.toLocaleString()}
+              
+              <div className="flex flex-col items-center md:items-start text-center md:text-left group">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <span className="text-3xl md:text-4xl font-bold text-gray-800 transition-all duration-300">
+                  {animatedStats.categories.toLocaleString()}+
                 </span>
-                <span className="text-gray-600">Course Categories</span>
+                <span className="text-gray-600 text-sm font-medium">Categories</span>
               </div>
             </div>
           </div>
 
-          {/* Right Image Placeholder (with frame) */}
-          <div className="p-8 h-[400px] w-full md:w-[400px] flex items-center justify-center overflow-hidden rounded-lg mx-auto">
-            <Image
-              src="/hero_img.png"
-              alt="Placeholder for student image"
-              width={500}
-              height={600}
-              className="object-cover object-top h-full w-full rounded-lg "
-            />
+          {/* Right Image - Enhanced with sliding carousel */}
+          <div className="relative">
+            {/* Background decorative elements */}
+            <div className="absolute -top-4 -right-4 w-32 h-32 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full opacity-20 animate-pulse"></div>
+            <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-gradient-to-br from-green-400 to-blue-500 rounded-full opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
+            
+            {/* Main image container with carousel */}
+            <div className="relative p-8 h-[500px] w-full flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 shadow-2xl transform hover:scale-105 transition-transform duration-500">
+              {/* Image carousel */}
+              <div className="relative w-full h-full">
+                {heroImages.map((image, index) => (
+                  <div
+                    key={index}
+                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                      index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
+                    <Image
+                      src={image.src}
+                      alt={image.alt}
+                      width={500}
+                      height={600}
+                      className="object-cover object-top h-full w-full rounded-xl shadow-lg"
+                    />
+                  </div>
+                ))}
+              </div>
+              
+              {/* Floating elements */}
+              <div className="absolute top-4 right-4 bg-white rounded-lg shadow-lg px-3 py-2 animate-bounce z-10">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700">Live Learning</span>
+                </div>
+              </div>
+              
+              <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg px-3 py-2 animate-bounce z-10" style={{ animationDelay: '0.5s' }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-xs font-medium text-gray-700">Expert Mentors</span>
+                </div>
+              </div>
+
+              {/* Carousel indicators */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+                {heroImages.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      index === currentImageIndex 
+                        ? 'bg-white scale-125 shadow-lg' 
+                        : 'bg-white/50 hover:bg-white/75'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </main>
 

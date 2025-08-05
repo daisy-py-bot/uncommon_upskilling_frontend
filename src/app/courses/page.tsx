@@ -6,7 +6,8 @@ import Link from "next/link";
 import { decodeJWT } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildApiUrl } from "@/lib/utils"
+import { buildApiUrl } from "@/lib/utils";
+import UserSidebar from "@/components/UserSidebar";
 
 export default function CourseCatalogPage() {
   const [user, setUser] = useState<{ id?: string; name?: string; avatar?: string; tagline?: string } | null>(null);
@@ -20,6 +21,7 @@ export default function CourseCatalogPage() {
   const [visibleCourses, setVisibleCourses] = useState(6);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchLoading, setIsSearchLoading] = useState(false);
+  const [activeNav, setActiveNav] = useState("courses");
   const CATEGORIES_TO_SHOW = 6;
 
   useEffect(() => {
@@ -215,53 +217,17 @@ export default function CourseCatalogPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <div className="text-2xl font-bold text-blue-600">uncommon</div>
-              <nav className="hidden md:flex space-x-8">
-                <a href="#" className="text-gray-600 hover:text-gray-900">
-                  View Jobs
-                </a>
-                <a href="#" className="text-gray-600 hover:text-gray-900">
-                  Find Talent
-                </a>
-                <a href="#" className="text-gray-900 font-medium">
-                  Courses
-                </a>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              {loading ? (
-                <div className="h-10 w-24 bg-gray-200 animate-pulse rounded-full" />
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <div className="h-10 w-10 rounded-full overflow-hidden flex items-center justify-center" style={{ backgroundColor: user?.avatar ? undefined : '#0747A1' }}>
-                    {user?.avatar ? (
-                      <img
-                        src={user.avatar}
-                        alt="User Avatar"
-                        className="h-10 w-10 object-cover"
-                      />
-                    ) : (
-                      <span className="text-white text-lg font-semibold">
-                        {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-sm font-medium">{user?.name || "User"}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-white flex">
+      {/* Left Sidebar - Reusable Component */}
+      <UserSidebar 
+        user={user || null}
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+      />
+      
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex-1 flex justify-center">
+        <div className="flex-1 p-8 pr-16 max-w-7xl">
         {/* Back Button */}
         <button
           onClick={() => router.push('/dashboard')}
@@ -346,7 +312,7 @@ export default function CourseCatalogPage() {
           </div>
 
           {/* Course Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
             {(loading || isCategoryLoading || isSearchLoading) ? (
               <div className="col-span-full text-center py-12 text-gray-500">Loading courses...</div>
             ) : error ? (
@@ -404,7 +370,8 @@ export default function CourseCatalogPage() {
             </div>
           )}
         </div>
-      </main>
+        </div>
+      </div>
     </div>
   );
 } 

@@ -6,10 +6,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
-import { Search, BookOpen, Award, LayoutDashboard, GraduationCap, User, LogOut, CheckCircle } from "lucide-react"
+import { Search, BookOpen, Award, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from 'next/navigation';
 import { buildApiUrl } from "@/lib/utils"
+import UserSidebar from "@/components/UserSidebar"
 
 interface DashboardUser {
   name: string;
@@ -111,6 +112,9 @@ export default function StudentDashboard() {
   const [filteredOngoing, setFilteredOngoing] = useState<any[]>([]);
   const [filteredCompleted, setFilteredCompleted] = useState<any[]>([]);
   const [filteredRecommended, setFilteredRecommended] = useState<any[]>([]);
+  const [ongoingDisplayCount, setOngoingDisplayCount] = useState(3);
+  const [completedDisplayCount, setCompletedDisplayCount] = useState(3);
+  const [recommendedDisplayCount, setRecommendedDisplayCount] = useState(3);
 
   useEffect(() => {
     setFilteredOngoing(ongoingCourses);
@@ -154,120 +158,61 @@ export default function StudentDashboard() {
     day: "numeric",
   })
 
-  return (
+    return (
     <div className="min-h-screen bg-white flex">
-      {/* Left Sidebar */}
-      <div className="w-80 bg-gray-50 flex flex-col">
-        {/* User Profile Section */}
-        <div className="p-6 bg-gray-100">
-          <div
-            className="flex items-center space-x-2 cursor-pointer group"
-            onClick={() => router.push('/profile')}
-            title="Go to profile"
-          >
-            <div
-              className="h-10 w-10 rounded-full overflow-hidden flex items-center justify-center group-hover:ring-2 group-hover:ring-blue-500 transition"
-              style={{ backgroundColor: user?.avatar ? undefined : '#0747A1' }}
-            >
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt="User Avatar"
-                  className="h-10 w-10 object-cover"
-                />
-              ) : (
-                <span className="text-white text-lg font-semibold">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                </span>
-              )}
-            </div>
-            <span className="text-sm font-medium group-hover:text-blue-700">
-              {user?.name || "User"}
-            </span>
-          </div>
-        </div>
-        {/* Navigation Menu (unchanged) */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-2">
-            <button
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  window.location.href = "/";
-                }
-              }}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9m0 0l9 9m-9-9v18" />
-              </svg>
-              <span className="font-medium">Home</span>
-            </button>
-            <button
-              onClick={() => setActiveNav("dashboard")}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                activeNav === "dashboard" ? "bg-white text-gray-900 shadow-sm" : "text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <LayoutDashboard className="h-5 w-5" />
-              <span className="font-medium">Dashboard</span>
-            </button>
-            <Link href="/courses">
-              <button
-                onClick={() => setActiveNav("courses")}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  activeNav === "courses" ? "bg-white text-gray-900 shadow-sm" : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <GraduationCap className="h-5 w-5" />
-                <span className="font-medium">Courses</span>
-              </button>
-            </Link>
-            <button
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  localStorage.removeItem("token");
-                  window.location.href = "http://localhost:3000/";
-                }
-              }}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-700 hover:bg-gray-100"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="font-medium">Logout</span>
-            </button>
-          </div>
-        </nav>
-      </div>
+      {/* Left Sidebar - Reusable Component */}
+      <UserSidebar 
+        user={user || null}
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+      />
       {/* Main Content */}
       <div className="flex-1 flex">
         {/* Content Area */}
         <div className="flex-1 p-8">
           {/* Header */}
-          <div className="flex items-center justify-between mb-12">
-            <div className="flex items-center space-x-6">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Hello, <span className="font-bold">{user?.name}</span>, welcome back!
+          <div className="mb-8">
+            {/* Welcome and Date Row */}
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-3xl font-bold text-gray-900">
+                Hello, <span className="text-amber-600">{user?.name}</span>! 👋
               </h1>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <div className="text-gray-600 font-medium">
+                {currentDate}
+              </div>
+            </div>
+            
+            {/* Search Row */}
+            <div className="flex items-center justify-between">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <Input
-                  placeholder="Search"
-                  className="pl-10 w-64"
+                  placeholder="Search your courses, lessons, or topics..."
+                  className="pl-10 w-full bg-gray-50 border-gray-200 focus:border-[#0747A1] focus:ring-[#0747A1]"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   onKeyDown={handleSearch}
                 />
               </div>
-            </div>
-            <div className="text-gray-600">
-              {currentDate}
+              <div className="text-sm text-gray-500">
+                {filteredOngoing.length + filteredCompleted.length} courses found
+              </div>
             </div>
           </div>
+          
           {/* Ongoing Courses Section */}
-          <div className="mb-16">
+          <div className="mt-20 mb-20">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">My Courses</h2>
               <div className="flex space-x-4">
-                <button className="text-gray-600 hover:text-gray-900">View All</button>
+                {filteredOngoing.length > 3 && (
+                  <button 
+                    className="text-[#0747A1] hover:text-[#05316e] font-medium"
+                    onClick={() => setOngoingDisplayCount(ongoingDisplayCount === 3 ? filteredOngoing.length : 3)}
+                  >
+                    {ongoingDisplayCount === 3 ? `View More (${filteredOngoing.length - 3})` : 'View Less'}
+                  </button>
+                )}
               </div>
             </div>
             {filteredOngoing.length === 0 ? (
@@ -279,7 +224,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredOngoing.map((item: any) => (
+                {filteredOngoing.slice(0, ongoingDisplayCount).map((item: any) => (
                   <Card key={item.id} className="overflow-hidden shadow-md">
                     <div className="aspect-video bg-gray-200">
                       <img
@@ -326,11 +271,21 @@ export default function StudentDashboard() {
               </div>
             )}
           </div>
+          
           {/* Completed Courses Section */}
-          <div className="mb-16">
+          <div className="mb-20">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Completed Courses</h2>
-              <button className="text-gray-600 hover:text-gray-900">View All</button>
+              <div className="flex space-x-4">
+                {filteredCompleted.length > 3 && (
+                  <button 
+                    className="text-[#0747A1] hover:text-[#05316e] font-medium"
+                    onClick={() => setCompletedDisplayCount(completedDisplayCount === 3 ? filteredCompleted.length : 3)}
+                  >
+                    {completedDisplayCount === 3 ? `View More (${filteredCompleted.length - 3})` : 'View Less'}
+                  </button>
+                )}
+              </div>
             </div>
             {filteredCompleted.length === 0 ? (
               <div className="text-center text-gray-500 py-12">
@@ -341,7 +296,7 @@ export default function StudentDashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCompleted.map((course: any) => {
+                {filteredCompleted.slice(0, completedDisplayCount).map((course: any) => {
                   // Get first lessonId if available
                   let firstLessonId = '1';
                   if (course.course?.modules && course.course.modules.length > 0) {
@@ -401,16 +356,27 @@ export default function StudentDashboard() {
               </div>
             )}
           </div>
+          
           {/* Recommended Section */}
-          <div className="mb-16">
+          <div className="mb-20">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Recommended for you</h2>
+              <div className="flex space-x-4">
+                {filteredRecommended.length > 3 && (
+                  <button 
+                    className="text-[#0747A1] hover:text-[#05316e] font-medium"
+                    onClick={() => setRecommendedDisplayCount(recommendedDisplayCount === 3 ? filteredRecommended.length : 3)}
+                  >
+                    {recommendedDisplayCount === 3 ? `View More (${filteredRecommended.length - 3})` : 'View Less'}
+                  </button>
+                )}
+              </div>
             </div>
             {filteredRecommended.length === 0 ? (
               <div className="text-center text-gray-500 py-12">There are currently no recommendations.</div>
             ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRecommended.map((course: DashboardCourse) => (
+                {filteredRecommended.slice(0, recommendedDisplayCount).map((course: DashboardCourse) => (
                 <Card key={course.id} className="overflow-hidden shadow-md">
                   <div className="aspect-video bg-gray-200">
                     <img
