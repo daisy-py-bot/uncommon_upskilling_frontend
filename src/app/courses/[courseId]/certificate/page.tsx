@@ -19,9 +19,10 @@ export default function CourseCertificatePage() {
   const [courseName, setCourseName] = useState('');
   const [generating, setGenerating] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [checkingFeedback, setCheckingFeedback] = useState(true);
+
+  // Default certificate URL from Canva
+  const DEFAULT_CERTIFICATE_URL = "https://www.canva.com/design/DAGvTqXV_Z0/4Z3tPZLjbjbw37-7K5havg/view?utm_content=DAGvTqXV_Z0&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=hccc30a23ea";
 
   useEffect(() => {
     // Get user info from JWT
@@ -31,6 +32,8 @@ export default function CourseCertificatePage() {
       setError('Missing user or course information.');
       return;
     }
+    setUserId(userInfo.id);
+    
     // Fetch user info from backend
     fetch(buildApiUrl(`users/${userInfo.id}`))
       .then(res => {
@@ -43,6 +46,7 @@ export default function CourseCertificatePage() {
       .catch(() => {
         setUser(null);
       });
+    
     // Fetch course name on mount
     fetch(buildApiUrl(`courses/${params.courseId}/content`))
       .then(res => {
@@ -57,37 +61,62 @@ export default function CourseCertificatePage() {
       });
   }, [params.courseId]);
 
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const userInfo = decodeJWT(token);
-    if (userInfo?.id && courseName) {
-      setUserId(userInfo.id);
-      setCheckingFeedback(true);
-      fetch(buildApiUrl(`feedback/user/${userInfo.id}/course/${params.courseId}`))
-        .then(res => res.json())
-        .then(data => {
-          setFeedbackSubmitted(!!data);
-        })
-        .catch(() => setFeedbackSubmitted(false))
-        .finally(() => setCheckingFeedback(false));
-    }
-  }, [courseName]);
-
-  // Handler to generate certificate
+  // Handler to generate certificate with feedback check
   const handleGenerateCertificate = async () => {
     if (!user?.id || !params.courseId) return;
-    setGenerating(true);
-    setError('');
+    
+    // First, check if user has submitted feedback
     try {
-      const res = await fetch(buildApiUrl('certificates/generate'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, courseId: params.courseId })
-      });
-      if (!res.ok) throw new Error('Failed to generate certificate.');
-      const data = await res.json();
-      setCertificateUrl(data.certificateUrl || data.url);
+      const feedbackRes = await fetch(buildApiUrl(`feedback/user/${user.id}/course/${params.courseId}`));
+      
+      // Check if the response is ok (not 404, 500, etc.)
+      if (!feedbackRes.ok) {
+        // If response is not ok (like 404), user hasn't submitted feedback
+        setShowFeedbackModal(true);
+        return;
+      }
+      
+      // Try to parse the response as JSON
+      let feedbackData;
+      try {
+        feedbackData = await feedbackRes.json();
+      } catch (parseError) {
+        // If JSON parsing fails, assume no feedback
+        setShowFeedbackModal(true);
+        return;
+      }
+      
+      // If no feedback data or empty object, show modal
+      if (!feedbackData || Object.keys(feedbackData).length === 0) {
+        setShowFeedbackModal(true);
+        return;
+      }
+      
+      // If feedback exists, use default certificate URL (bypass backend)
+      setGenerating(true);
+      setError('');
+      
+      // Use default Canva URL instead of backend certificate generation
+      setCertificateUrl(DEFAULT_CERTIFICATE_URL);
+      
+      // TODO: Uncomment when backend certificate generation is ready
+      // const certRes = await fetch(buildApiUrl('certificates/generate'), {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ userId: user.id, courseId: params.courseId })
+      // });
+      // 
+      // if (!certRes.ok) {
+      //   // If certificate generation fails, use default Canva URL
+      //   setCertificateUrl(DEFAULT_CERTIFICATE_URL);
+      // } else {
+      //   const certData = await certRes.json();
+      //   setCertificateUrl(certData.certificateUrl || certData.url || DEFAULT_CERTIFICATE_URL);
+      // }
+      
     } catch (err: any) {
+      // If any error occurs, use default Canva URL
+      setCertificateUrl(DEFAULT_CERTIFICATE_URL);
       setError(err.message || 'Failed to generate certificate.');
     } finally {
       setGenerating(false);
@@ -131,14 +160,8 @@ export default function CourseCertificatePage() {
           ) : (
             <Button
               className="mt-2 w-full flex items-center justify-center gap-2"
-              onClick={() => {
-                if (feedbackSubmitted === false) {
-                  setShowFeedbackModal(true);
-                  return;
-                }
-                handleGenerateCertificate();
-              }}
-              disabled={generating || checkingFeedback}
+              onClick={handleGenerateCertificate}
+              disabled={generating}
             >
               {generating ? (
                 <>
@@ -158,7 +181,8 @@ export default function CourseCertificatePage() {
               userId={userId}
               onFeedbackSubmitted={() => {
                 setShowFeedbackModal(false);
-                setFeedbackSubmitted(true);
+                // After feedback is submitted, generate certificate
+                handleGenerateCertificate();
               }}
             />
           )}

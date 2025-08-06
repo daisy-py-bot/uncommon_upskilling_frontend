@@ -559,37 +559,58 @@ export default function CourseLearningPage({
               </Tabs>
               {/* Mark as Complete Button or Completed Badge */}
               {!loading && !error && course && (
-                completed ? (
-                  <div className="inline-flex items-center gap-2 mt-4 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    Completed
+                <div className="flex justify-between items-center mt-4">
+                  <div>
+                    {completed ? (
+                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Completed
+                      </div>
+                    ) : (
+                      <Button onClick={markLessonComplete} disabled={markingComplete}>
+                        {markingComplete ? 'Marking...' : 'Mark as Complete'}
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <Button onClick={markLessonComplete} disabled={markingComplete} className="mt-4">
-                    {markingComplete ? 'Marking...' : 'Mark as Complete'}
-                  </Button>
-                )
+                  
+                  {/* Navigation buttons on the right */}
+                  <div className="flex space-x-2">
+                    {previousLesson && (
+                      <Link href={`/courses/${courseId}/learn/${previousLesson.id}`}>
+                        <Button variant="outline" className="min-w-[120px] flex items-center justify-center">
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          <span className="inline-block align-middle">Previous</span>
+                        </Button>
+                      </Link>
+                    )}
+                    {nextLesson && (
+                      <Link href={`/courses/${courseId}/learn/${nextLesson.id}`}>
+                        <Button className="bg-blue-600 hover:bg-blue-700 min-w-[120px] flex items-center justify-center">
+                          <span className="inline-block align-middle">Next</span>
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           </div>
-          <div className="flex justify-end space-x-2 mt-8 pr-8 pb-16">
-            {previousLesson && (
-              <Link href={`/courses/${courseId}/learn/${previousLesson.id}`}>
-                <Button variant="outline" className="min-w-[120px] flex items-center justify-center">
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  <span className="inline-block align-middle">Previous</span>
-                </Button>
-              </Link>
-            )}
-            {nextLesson && (
-              <Link href={`/courses/${courseId}/learn/${nextLesson.id}`}>
-                <Button className="bg-blue-600 hover:bg-blue-700 min-w-[120px] flex items-center justify-center">
-                  <span className="inline-block align-middle">Next</span>
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              </Link>
-            )}
-          </div>
+          {/* Module Quiz CTA - Show at the end of the last lesson in a module */}
+          {currentModule && currentModule.lessons && course?.currentLesson &&
+            currentModule.lessons[currentModule.lessons.length - 1].id === course.currentLesson.id &&
+            Array.isArray(currentModule.quizzes) && currentModule.quizzes.length > 0 && (
+              <div className="mt-12 flex flex-col items-center">
+                <div className="text-xl font-semibold text-blue-800 mb-2">🎉 You've completed all lessons in this module!</div>
+                <div className="text-gray-700 mb-6">Test your knowledge and reinforce your learning with the module quiz.</div>
+                <Link href={`/courses/${courseId}/learn/quiz/${currentModule.quizzes[0].id}`}>
+                  <Button className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold px-8 py-4 text-lg shadow-md rounded-xl">
+                    Ready for the Module Quiz? Take it now!
+                  </Button>
+                </Link>
+              </div>
+            )
+          }
         </div>
 
         {/* Sidebar Toggle Button (when closed) */}
