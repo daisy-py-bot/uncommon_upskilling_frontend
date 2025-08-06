@@ -406,24 +406,6 @@ export default function CourseLearningPage({
                 <span className="text-gray-900 font-medium">{course?.currentLesson?.title || 'Lesson'}</span>
                 {completed && <CheckCircle className="h-5 w-5 text-green-600" />}
               </div>
-              <div className="flex space-x-2">
-                {previousLesson && (
-                  <Link href={`/courses/${courseId}/learn/${previousLesson.id}`}>
-                    <Button variant="outline" className="min-w-[120px] flex items-center justify-center">
-                      <ChevronLeft className="h-4 w-4 mr-1" />
-                      <span className="inline-block align-middle">Previous</span>
-                    </Button>
-                  </Link>
-                )}
-                {nextLesson && (
-                  <Link href={`/courses/${courseId}/learn/${nextLesson.id}`}>
-                    <Button className="bg-blue-600 hover:bg-blue-700 min-w-[120px] flex items-center justify-center">
-                      <span className="inline-block align-middle">Next</span>
-                      <ChevronRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </Link>
-                )}
-              </div>
             </div>
           </div>
 
@@ -477,7 +459,7 @@ export default function CourseLearningPage({
                     <div className="py-8 text-center text-gray-400">{error ? error : 'Loading...'}</div>
                   ) : (
                     <Card>
-                      <CardContent className="p-6">
+                      <CardContent className="p-6 max-h-[400px] overflow-y-auto">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-4">
                             <h3 className="font-medium text-left">Language</h3>
@@ -514,7 +496,7 @@ export default function CourseLearningPage({
                     <div className="py-8 text-center text-gray-400">{error ? error : 'Loading...'}</div>
                   ) : (
                     <Card>
-                      <CardContent className="p-6">
+                      <CardContent className="p-6 max-h-[400px] overflow-y-auto">
                         <div className="space-y-6">
                           {course.currentLesson && Array.isArray(course.currentLesson.notes) ? (
                             course.currentLesson.notes.map((note: any, index: number) => (
@@ -538,7 +520,7 @@ export default function CourseLearningPage({
                     <div className="py-8 text-center text-gray-400">{error ? error : 'Loading...'}</div>
                   ) : (
                     <Card>
-                      <CardContent className="p-6">
+                      <CardContent className="p-6 max-h-[400px] overflow-y-auto">
                         <div className="space-y-4">
                           {course.currentLesson && Array.isArray(course.currentLesson.resources) ? (
                             course.currentLesson.resources.map((resource: any, index: number) => (
@@ -589,6 +571,24 @@ export default function CourseLearningPage({
                 )
               )}
             </div>
+          </div>
+          <div className="flex justify-end space-x-2 mt-8 pr-8 pb-16">
+            {previousLesson && (
+              <Link href={`/courses/${courseId}/learn/${previousLesson.id}`}>
+                <Button variant="outline" className="min-w-[120px] flex items-center justify-center">
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  <span className="inline-block align-middle">Previous</span>
+                </Button>
+              </Link>
+            )}
+            {nextLesson && (
+              <Link href={`/courses/${courseId}/learn/${nextLesson.id}`}>
+                <Button className="bg-blue-600 hover:bg-blue-700 min-w-[120px] flex items-center justify-center">
+                  <span className="inline-block align-middle">Next</span>
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
