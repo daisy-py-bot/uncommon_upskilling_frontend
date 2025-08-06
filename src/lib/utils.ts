@@ -8,7 +8,10 @@ export function cn(...inputs: ClassValue[]) {
 // API base URL - can be changed globally
 // const API_BASE_URL = "http://64.227.102.139:3001";
 // const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uncommon-upskilling.duckdns.org";
-const API_BASE_URL = "http://localhost:3001";
+export const API_BASE_URL = "http://localhost:3001";
+
+// Frontend base URL - can be changed globally for deployment
+export const FRONTEND_BASE_URL = process.env.NEXT_PUBLIC_FRONTEND_BASE_URL || "http://localhost:3000";
 
 // Utility function to construct full API URL
 export function buildApiUrl(endpoint: string): string {

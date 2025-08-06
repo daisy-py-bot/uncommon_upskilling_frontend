@@ -4,10 +4,11 @@ import { useState } from "react"
 import { LayoutDashboard, GraduationCap, LogOut } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from 'next/navigation'
+import { API_BASE_URL, FRONTEND_BASE_URL } from '@/lib/utils'
 
 interface UserSidebarProps {
   user: {
-    name: string;
+    name?: string;
     avatar?: string;
   } | null;
   activeNav?: string;
@@ -98,7 +99,10 @@ export default function UserSidebar({ user, activeNav = "dashboard", onNavChange
           
           {/* Dashboard Button */}
           <button
-            onClick={() => onNavChange?.("dashboard")}
+            onClick={() => {
+              onNavChange?.("dashboard");
+              router.push("/dashboard");
+            }}
             className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-4'} px-4 py-4 rounded-xl text-left transition-all duration-300 group ${
               activeNav === "dashboard" 
                 ? "bg-gradient-to-r from-[#0747A1] to-blue-600 text-white shadow-lg scale-105" 
@@ -119,35 +123,36 @@ export default function UserSidebar({ user, activeNav = "dashboard", onNavChange
           </button>
           
           {/* Courses Button */}
-          <Link href="/courses">
-            <button
-              onClick={() => onNavChange?.("courses")}
-              className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-4'} px-4 py-4 rounded-xl text-left transition-all duration-300 group ${
-                activeNav === "courses" 
-                  ? "bg-gradient-to-r from-[#0747A1] to-blue-600 text-white shadow-lg scale-105" 
-                  : "text-gray-700 hover:bg-white hover:shadow-lg hover:scale-105"
-              }`}
-              title={sidebarCollapsed ? "Courses" : ""}
-            >
-              <div className={`p-2 rounded-lg transition-all duration-300 ${
-                activeNav === "courses" 
-                  ? "bg-white/20" 
-                  : "bg-gradient-to-br from-green-400 to-green-500 group-hover:scale-110"
-              }`}>
-                <GraduationCap className={`h-5 w-5 ${
-                  activeNav === "courses" ? "text-white" : "text-white"
-                }`} />
-              </div>
-              {!sidebarCollapsed && <span className="font-semibold">Courses</span>}
-            </button>
-          </Link>
+          <button
+            onClick={() => {
+              onNavChange?.("courses");
+              router.push("/courses");
+            }}
+            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-4'} px-4 py-4 rounded-xl text-left transition-all duration-300 group ${
+              activeNav === "courses" 
+                ? "bg-gradient-to-r from-[#0747A1] to-blue-600 text-white shadow-lg scale-105" 
+                : "text-gray-700 hover:bg-white hover:shadow-lg hover:scale-105"
+            }`}
+            title={sidebarCollapsed ? "Courses" : ""}
+          >
+            <div className={`p-2 rounded-lg transition-all duration-300 ${
+              activeNav === "courses" 
+                ? "bg-white/20" 
+                : "bg-gradient-to-br from-green-400 to-green-500 group-hover:scale-110"
+            }`}>
+              <GraduationCap className={`h-5 w-5 ${
+                activeNav === "courses" ? "text-white" : "text-white"
+              }`} />
+            </div>
+            {!sidebarCollapsed && <span className="font-semibold">Courses</span>}
+          </button>
           
           {/* Logout Button */}
           <button
             onClick={() => {
               if (typeof window !== "undefined") {
                 localStorage.removeItem("token");
-                window.location.href = "http://localhost:3000/";
+                window.location.href = `${FRONTEND_BASE_URL}/`;
               }
             }}
             className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-4'} px-4 py-4 rounded-xl text-left transition-all duration-300 text-gray-700 hover:bg-red-50 hover:shadow-lg hover:scale-105 group`}

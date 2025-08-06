@@ -9,16 +9,27 @@ import { useRouter } from "next/navigation";
 import { buildApiUrl } from "@/lib/utils";
 import UserSidebar from "@/components/UserSidebar";
 
+type Category = {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string | null;
+  isActive?: boolean;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export default function CourseCatalogPage() {
   const [user, setUser] = useState<{ id?: string; name?: string; avatar?: string; tagline?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [courses, setCourses] = useState<any[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [showAllCategories, setShowAllCategories] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [isCategoryLoading, setIsCategoryLoading] = useState(false);
-  const [visibleCourses, setVisibleCourses] = useState(6);
+  const [visibleCourses, setVisibleCourses] = useState(8);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [activeNav, setActiveNav] = useState("courses");
@@ -52,6 +63,28 @@ export default function CourseCatalogPage() {
     fetchUser();
   }, []);
 
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch(buildApiUrl("categories"));
+        if (!res.ok) throw new Error("Failed to fetch categories");
+        let data: Category[] = await res.json();
+        // Filter out reserved categories by name
+        data = data.filter((cat) => cat.name.toLowerCase() !== 'all' && cat.name.toLowerCase() !== 'most popular');
+        const allCategory: Category = { id: "all", name: "All" };
+        const mostPopularCategory: Category = { id: "most-popular", name: "Most Popular" };
+        setCategories([allCategory, mostPopularCategory, ...data]);
+        setSelectedCategory(allCategory);
+      } catch (err) {
+        const allCategory: Category = { id: "all", name: "All" };
+        const mostPopularCategory: Category = { id: "most-popular", name: "Most Popular" };
+        setCategories([allCategory, mostPopularCategory]);
+        setSelectedCategory(allCategory);
+      }
+    }
+    fetchCategories();
+  }, []);
+
   // Fetch all courses initially
   useEffect(() => {
     async function fetchCourses() {
@@ -79,7 +112,7 @@ export default function CourseCatalogPage() {
 
   // Fetch courses by category
   useEffect(() => {
-    if (selectedCategory === 'All') return;
+    if (!selectedCategory || selectedCategory.id === 'all') return;
     async function fetchCoursesByCategory() {
       setIsCategoryLoading(true);
       setError("");
@@ -91,10 +124,12 @@ export default function CourseCatalogPage() {
           const userInfo = decodeJWT(token);
           userId = userInfo?.id;
         }
-        if (selectedCategory === 'Most Popular') {
+        if (selectedCategory && selectedCategory.id === 'most-popular') {
           url = buildApiUrl(`courses/search/most-popular?userId=${userId}`);
+        } else if (selectedCategory) {
+          url = buildApiUrl(`courses/search/by-category?categoryId=${selectedCategory.id}&userId=${userId}`);
         } else {
-          url = buildApiUrl(`courses/search/by-category?category=${encodeURIComponent(selectedCategory)}&userId=${userId}`);
+          return;
         }
         const res = await fetch(url);
         if (!res.ok) throw new Error("Failed to fetch courses");
@@ -112,13 +147,13 @@ export default function CourseCatalogPage() {
 
   // Reset visible courses when category changes
   useEffect(() => {
-    setVisibleCourses(6);
+    setVisibleCourses(8);
   }, [selectedCategory, courses]);
 
   // Handle category click
-  const handleCategoryClick = (category: string) => {
+  const handleCategoryClick = (category: Category) => {
     setSelectedCategory(category);
-    if (category === 'All') {
+    if (category.id === 'all') {
       // Refetch all courses
       (async () => {
         setIsCategoryLoading(true);
@@ -149,7 +184,7 @@ export default function CourseCatalogPage() {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) {
       // If search is cleared, show all courses for the current category
-      handleCategoryClick(selectedCategory);
+      handleCategoryClick(selectedCategory || categories[0]); // Fallback to first category if selectedCategory is null
       return;
     }
     setIsSearchLoading(true);
@@ -165,7 +200,7 @@ export default function CourseCatalogPage() {
       if (!res.ok) throw new Error("Failed to fetch courses");
       const data = await res.json();
       setCourses(data);
-      setVisibleCourses(6);
+      setVisibleCourses(8);
     } catch (err: any) {
       setCourses([]);
       setError(err.message || "Failed to fetch courses");
@@ -189,7 +224,7 @@ export default function CourseCatalogPage() {
       if (!res.ok) throw new Error("Failed to fetch courses");
       const data = await res.json();
       setCourses(data);
-      setVisibleCourses(6);
+      setVisibleCourses(8);
     } catch (err: any) {
       setCourses([]);
       setError(err.message || "Failed to fetch courses");
@@ -197,22 +232,6 @@ export default function CourseCatalogPage() {
       setIsSearchLoading(false);
     }
   };
-
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch(buildApiUrl("courses/categories"));
-        if (!res.ok) throw new Error("Failed to fetch categories");
-        let data = await res.json();
-        // Remove duplicates and reserved categories
-        data = data.filter((cat: string) => cat.toLowerCase() !== 'all' && cat.toLowerCase() !== 'most popular');
-        setCategories(["All", "Most Popular", ...data]);
-      } catch (err) {
-        setCategories(["All", "Most Popular"]);
-      }
-    }
-    fetchCategories();
-  }, []);
 
   const router = useRouter();
 
@@ -229,7 +248,7 @@ export default function CourseCatalogPage() {
       <div className="flex-1 flex justify-center">
         <div className="flex-1 p-8 pr-16 max-w-7xl">
         {/* Back Button */}
-        <button
+        {/* <button
           onClick={() => router.push('/dashboard')}
           className="mb-4 flex items-center text-gray-500 hover:text-blue-600 bg-transparent border-none outline-none cursor-pointer"
           style={{ background: 'transparent', boxShadow: 'none' }}
@@ -239,7 +258,7 @@ export default function CourseCatalogPage() {
             <path d="M15 19l-7-7 7-7" />
           </svg>
           <span>Back to Dashboard</span>
-        </button>
+        </button> */}
         {/* Courses Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Courses</h1>
@@ -268,12 +287,12 @@ export default function CourseCatalogPage() {
             <div className="flex flex-wrap gap-2 mb-4">
               {categories.slice(0, showAllCategories ? categories.length : CATEGORIES_TO_SHOW).map((category, index) => (
                 <Badge
-                  key={index}
-                  variant={selectedCategory === category ? "default" : "secondary"}
-                  className={`px-3 py-1 rounded-full cursor-pointer text-sm ${selectedCategory === category ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  key={category.id}
+                  variant={selectedCategory?.id === category.id ? "default" : "secondary"}
+                  className={`px-3 py-1 rounded-full cursor-pointer text-sm ${selectedCategory?.id === category.id ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   onClick={() => handleCategoryClick(category)}
                 >
-                  {category}
+                  {category.name}
                 </Badge>
               ))}
               {categories.length > CATEGORIES_TO_SHOW && !showAllCategories && (
@@ -307,7 +326,7 @@ export default function CourseCatalogPage() {
         {/* Most Popular Section */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{selectedCategory ? (selectedCategory.name.charAt(0).toUpperCase() + selectedCategory.name.slice(1)) : "Category"}</h2>
             <span className="text-sm text-gray-500">({courses.length} result{courses.length === 1 ? '' : 's'})</span>
           </div>
 
@@ -363,7 +382,7 @@ export default function CourseCatalogPage() {
               <Button
                 variant="outline"
                 className="rounded-md bg-transparent"
-                onClick={() => setVisibleCourses(v => v + 6)}
+                onClick={() => setVisibleCourses(v => v + 8)}
               >
                 Show more
               </Button>
