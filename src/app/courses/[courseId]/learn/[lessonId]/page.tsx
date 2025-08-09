@@ -349,14 +349,14 @@ export default function CourseLearningPage({
                 <div className="mt-6">
                   <Link
                     href={`/courses/${courseId}/learn/final-assessment${course.finalAssessmentCompleted ? '/review' : ''}`}
-                    className={`flex items-center p-3 rounded-lg transition-colors mt-2 border ${course.finalAssessmentCompleted ? 'bg-green-50 border-green-200' : 'bg-purple-50 border-purple-200 hover:bg-purple-100'}`}
+                    className={`flex items-center p-3 rounded-lg transition-colors mt-2 border ${course.finalAssessmentCompleted ? 'bg-green-50 border-green-200' : 'bg-gray-100 border-gray-100 hover:bg-gray-200'}`}
                   >
                     {course.finalAssessmentCompleted ? (
                       <CheckCircle className="h-5 w-5 text-green-600 mr-3" />
                     ) : (
-                      <GraduationCap className="h-5 w-5 text-purple-700 mr-3" />
+                      <GraduationCap className="h-5 w-5 text-gray-600 mr-3" />
                     )}
-                    <span className={`font-medium text-sm ${course.finalAssessmentCompleted ? 'text-green-900' : 'text-purple-900'}`}>Final Assessment: {course.finalAssessment.title}</span>
+                    <span className={`font-medium text-sm ${course.finalAssessmentCompleted ? 'text-green-900' : 'text-gray-800'}`}>Final Assessment: {course.finalAssessment.title}</span>
                   </Link>
                 </div>
               )}
@@ -364,10 +364,10 @@ export default function CourseLearningPage({
               <div className="mt-2">
                 <Link
                   href={`/courses/${courseId}/feedback`}
-                  className="flex items-center p-3 rounded-lg transition-colors mt-2 border bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                  className="flex items-center p-3 rounded-lg transition-colors mt-2 border bg-gray-100 border-gray-100 hover:bg-gray-200"
                 >
-                  <MessageCircle className="h-5 w-5 text-yellow-700 mr-3" />
-                  <span className="font-medium text-sm text-yellow-900">Feedback</span>
+                  <MessageCircle className="h-5 w-5 text-gray-600 mr-3" />
+                  <span className="font-medium text-sm text-gray-800">Feedback</span>
                 </Link>
               </div>
               {/* Certificate Link */}
@@ -375,10 +375,10 @@ export default function CourseLearningPage({
                 <div className="mt-2">
                   <Link
                     href={`/courses/${courseId}/certificate`}
-                    className="flex items-center p-3 rounded-lg transition-colors border bg-blue-50 border-blue-200 hover:bg-blue-100"
+                    className="flex items-center p-3 rounded-lg transition-colors border bg-gray-100 border-gray-100 hover:bg-gray-200"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-700 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                    <span className="font-medium text-sm text-blue-900">Certificate</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                    <span className="font-medium text-sm text-gray-800">Certificate</span>
                   </Link>
                 </div>
               )}

@@ -1,10 +1,14 @@
+// src/app/admin/course-management/[courseId]/page.tsx
+// This page is used to view and manage a course.
+// It is used by the admin to view and manage a course.
+// It is used to view and manage a course.
 "use client"
 
 // import { AppSidebar } from "@/components/app-sidebar"
 import AdminSidebar from "@/components/AdminSidebar"
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Edit, Save, X, Plus, Trash2 } from "lucide-react"
+import { Edit, Save, X, Plus, Trash2, Loader2, Tag, Award } from "lucide-react"
 import Link from "next/link"
 import { CourseStatisticItem } from "@/components/course-statistic-item"
 import React, { useEffect, useState } from "react";
@@ -12,6 +16,8 @@ import { buildApiUrl } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function CourseViewPage({ params }: { params: Promise<{ courseId: string }> }) {
   // --- Course data state and fetch logic ---
@@ -29,6 +35,16 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
   const [editingCourse, setEditingCourse] = useState(false);
   const [editData, setEditData] = useState<any>({});
+  // --- Ancillary management data (categories, badges, tags) ---
+  const [categories, setCategories] = useState<any[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(false);
+  const [badges, setBadges] = useState<any[]>([]);
+  const [badgesLoading, setBadgesLoading] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [newTag, setNewTag] = useState<string>("");
+  const [showAddLessonModal, setShowAddLessonModal] = useState<boolean>(false);
+  const [lessonModalModuleId, setLessonModalModuleId] = useState<string | null>(null);
+  const [showAddModuleModal, setShowAddModuleModal] = useState<boolean>(false);
 
   // Unwrap params Promise
   const { courseId } = React.use(params);
@@ -71,6 +87,42 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
   }, [courseId]);
   // --- End statistics logic ---
 
+  // --- Load categories and badges for management ---
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        setCategoriesLoading(true);
+        const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+        const res = await fetch(buildApiUrl('categories/all'), {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(Array.isArray(data) ? data : []);
+        }
+      } finally {
+        setCategoriesLoading(false);
+      }
+    }
+    async function loadBadges() {
+      try {
+        setBadgesLoading(true);
+        const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+        const res = await fetch(buildApiUrl('badges'), {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setBadges(Array.isArray(data) ? data : []);
+        }
+      } finally {
+        setBadgesLoading(false);
+      }
+    }
+    loadCategories();
+    loadBadges();
+  }, []);
+
   // --- Edit handlers ---
   const startEditingModule = (module: any) => {
     setEditingModuleId(module.id);
@@ -101,15 +153,36 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
       title: course.title || '',
       description: course.description || '',
       level: course.level || 'beginner',
-      category: course.category || '',
-      objectives: course.objectives || []
+      categoryId: course.categoryId || '',
+      objectives: course.objectives || [],
+      tags: Array.isArray(course.searchTags)
+        ? course.searchTags
+        : (Array.isArray(course.tags) ? course.tags : []),
+      badgeIds: Array.isArray(course.badges) ? course.badges.map((b: any) => b.id) : (Array.isArray(course.badgeIds) ? course.badgeIds : []),
+      isPublished: course.isPublished ?? true,
     });
+  };
+
+  const authHeaders = (): Record<string, string> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
   };
 
   const saveModule = async (moduleId: string) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Saving module:', moduleId, editData);
+      const res = await fetch(buildApiUrl(`courses/${courseId}/modules/${moduleId}`), {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          title: editData.title,
+          description: editData.description,
+          duration: editData.duration,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save module');
       
       // Update local state
       setCourse((prevCourse: any) => ({
@@ -126,10 +199,44 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
     }
   };
 
-  const saveLesson = async (lessonId: string) => {
+  const saveLesson = async (moduleId: string, lessonId: string) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Saving lesson:', lessonId, editData);
+      // Normalize notes to array of { title, content }
+      const normalizedNotes = Array.isArray(editData.notes)
+        ? editData.notes.map((n: any) => ({
+            title: (n?.title ?? '').toString(),
+            content: (n?.content ?? '').toString(),
+          }))
+        : (typeof editData.notes === 'string' && editData.notes.trim().length > 0
+            ? [{ title: 'Notes', content: editData.notes.trim() }]
+            : []);
+
+      // Normalize resources to array of { title, description, url, type }
+      const normalizedResources = Array.isArray(editData.resources)
+        ? editData.resources.map((r: any) => ({
+            title: (r?.title ?? '').toString(),
+            description: (r?.description ?? '').toString(),
+            url: (r?.url ?? '').toString(),
+            type: (r?.type ?? 'article').toString(),
+          }))
+        : [];
+
+      const res = await fetch(buildApiUrl(`lessons/${lessonId}`), {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          title: editData.title,
+          content: editData.content,
+          duration: editData.duration !== undefined && editData.duration !== null && String(editData.duration).trim() !== ''
+            ? Number.parseInt(String(editData.duration), 10)
+            : undefined,
+          type: editData.type,
+          mediaUrl: editData.mediaUrl,
+          notes: normalizedNotes,
+          resources: normalizedResources,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save lesson');
       
       // Update local state
       setCourse((prevCourse: any) => ({
@@ -151,19 +258,39 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
 
   const saveCourse = async () => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Saving course:', editData);
+      setSaving(true);
+      const payload: any = {
+        title: editData.title,
+        description: editData.description,
+        level: editData.level,
+        objectives: editData.objectives,
+        categoryId: editData.categoryId || null,
+        searchTags: Array.isArray(editData.tags) ? editData.tags : [],
+        badgeIds: Array.isArray(editData.badgeIds) ? editData.badgeIds : [],
+        isPublished: editData.isPublished,
+      };
+
+      const res = await fetch(buildApiUrl(`courses/${courseId}`), {
+        method: 'PATCH',
+        headers: authHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error('Failed to save course');
+      const updated = await res.json().catch(() => null);
       
       // Update local state
       setCourse((prevCourse: any) => ({
         ...prevCourse,
-        ...editData
+        ...editData,
+        ...(updated || {}),
       }));
       
       setEditingCourse(false);
       setEditData({});
     } catch (error) {
       console.error('Error saving course:', error);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -180,8 +307,11 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
     }
     
     try {
-      // TODO: Replace with actual API call
-      console.log('Deleting module:', moduleId);
+      const res = await fetch(buildApiUrl(`courses/${courseId}/modules/${moduleId}`), {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to delete module');
       
       // Update local state
       setCourse((prevCourse: any) => ({
@@ -199,8 +329,11 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
     }
     
     try {
-      // TODO: Replace with actual API call
-      console.log('Deleting lesson:', lessonId, 'from module:', moduleId);
+      const res = await fetch(buildApiUrl(`courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`), {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error('Failed to delete lesson');
       
       // Update local state
       setCourse((prevCourse: any) => ({
@@ -216,32 +349,270 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
     }
   };
 
-  const addLesson = (moduleId: string) => {
-    const newLesson = {
-      id: `temp-${Date.now()}`,
-      title: 'New Lesson',
-      content: '',
-      duration: '',
-      type: 'video',
-      mediaUrl: '',
-      notes: [],
-      resources: [],
-      transcript: [],
-      order: 1
-    };
-    
+  const openAddLesson = (moduleId: string) => {
+    setLessonModalModuleId(moduleId);
+    setShowAddLessonModal(true);
+  };
+
+  const handleCreateLesson = async (moduleId: string, payload: { title: string; content?: string; duration?: number | string; type?: string; mediaUrl?: string; notes?: Array<{ title: string; content: string }>; resources?: Array<{ title: string; description?: string; url: string; type?: string }>; }) => {
+    const moduleObj = course?.modules?.find((m: any) => m.id === moduleId);
+    const nextOrder = ((moduleObj?.lessons?.length || 0) + 1);
+    const res = await fetch(buildApiUrl('lessons'), {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        moduleId,
+        title: payload.title,
+        content: payload.content,
+        mediaUrl: payload.mediaUrl,
+        notes: Array.isArray(payload.notes) ? payload.notes : undefined,
+        resources: Array.isArray(payload.resources) ? payload.resources : undefined,
+        order: nextOrder,
+        duration: payload.duration !== undefined && payload.duration !== null && String(payload.duration).trim() !== ''
+          ? Number.parseInt(String(payload.duration), 10)
+          : undefined,
+        type: payload.type,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to add lesson');
+    const created = await res.json();
     setCourse((prevCourse: any) => ({
       ...prevCourse,
       modules: prevCourse.modules.map((mod: any) =>
         mod.id === moduleId
-          ? { ...mod, lessons: [...(mod.lessons || []), newLesson] }
+          ? { ...mod, lessons: [...(mod.lessons || []), created] }
           : mod
       )
     }));
-    
-    // Start editing the new lesson
-    startEditingLesson(newLesson);
+    startEditingLesson(created);
   };
+
+  const openAddModule = () => {
+    setShowAddModuleModal(true);
+  };
+
+  const handleCreateModule = async (payload: { title: string; description?: string; order: number; }) => {
+    const res = await fetch(buildApiUrl('modules'), {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        courseId: String(courseId),
+        title: payload.title,
+        description: payload.description,
+        order: Number(payload.order),
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to add module');
+    const created = await res.json();
+    setCourse((prevCourse: any) => ({
+      ...prevCourse,
+      modules: [...(prevCourse.modules || []), created],
+    }));
+    startEditingModule(created);
+  };
+
+  // --- Inline forms for modals ---
+  function LessonForm({ onSubmit, onCancel }: { onSubmit: (payload: { title: string; content?: string; duration?: number | string; type?: string; mediaUrl?: string; notes?: Array<{ title: string; content: string }>; resources?: Array<{ title: string; description?: string; url: string; type?: string }>; }) => void | Promise<void>, onCancel: () => void }) {
+    const [form, setForm] = useState<{ title: string; content: string; duration: string; type: string; mediaUrl: string; notes: Array<{ title: string; content: string }>; resources: Array<{ title: string; description: string; url: string; type: string }> }>({
+      title: '',
+      content: '',
+      duration: '',
+      type: 'video',
+      mediaUrl: '',
+      notes: [{ title: '', content: '' }],
+      resources: [{ title: '', description: '', url: '', type: 'article' }],
+    });
+    const [submitting, setSubmitting] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const uploadFile = async (file: File): Promise<string> => {
+      const fd = new FormData();
+      fd.append('file', file);
+      const response = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Upload failed');
+      }
+      const data = await response.json();
+      return data.url;
+    };
+    return (
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Lesson Title</label>
+          <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Lesson title" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Content</label>
+          <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={3} />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Duration (min)</label>
+            <Input value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} type="number" min={0} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Type</label>
+            <Select value={form.type} onValueChange={(val) => setForm({ ...form, type: val })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="video">Video</SelectItem>
+                <SelectItem value="reading">Reading</SelectItem>
+                <SelectItem value="quiz">Quiz</SelectItem>
+                <SelectItem value="pdf">PDF</SelectItem>
+                <SelectItem value="doc">Doc</SelectItem>
+                <SelectItem value="image">Image</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Media URL</label>
+            <Input value={form.mediaUrl} onChange={(e) => setForm({ ...form, mediaUrl: e.target.value })} placeholder="https://..." />
+            <div className="mt-2 flex items-center gap-2">
+              <Input id="lesson-file-upload" type="file" className="hidden" onChange={async (e) => {
+                if (!e.target.files || !e.target.files[0]) return;
+                try {
+                  setUploading(true);
+                  const url = await uploadFile(e.target.files[0]);
+                  setForm({ ...form, mediaUrl: url });
+                } catch (err: any) {
+                  alert(err?.message || 'Upload failed');
+                } finally {
+                  setUploading(false);
+                }
+              }} />
+              <Button type="button" variant="outline" onClick={() => document.getElementById('lesson-file-upload')?.click()} disabled={uploading}>
+                {uploading ? 'Uploading...' : 'Upload File'}
+              </Button>
+            </div>
+          </div>
+        </div>
+        {/* Removed Video URL and Transcript per request */}
+        <div>
+          <label className="block text-sm font-medium mb-1">Notes</label>
+          <div className="space-y-2">
+            {form.notes.map((note, idx) => (
+              <div key={idx} className="space-y-2">
+                <Input placeholder="Title" value={note.title} onChange={(e) => {
+                  const updated = [...form.notes];
+                  updated[idx] = { ...updated[idx], title: e.target.value };
+                  setForm({ ...form, notes: updated });
+                }} />
+                <Textarea placeholder="Content" value={note.content} onChange={(e) => {
+                  const updated = [...form.notes];
+                  updated[idx] = { ...updated[idx], content: e.target.value };
+                  setForm({ ...form, notes: updated });
+                }} rows={2} />
+                {form.notes.length > 1 && (
+                  <Button type="button" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => setForm({ ...form, notes: form.notes.filter((_, i) => i !== idx) })}>Remove</Button>
+                )}
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={() => setForm({ ...form, notes: [...form.notes, { title: '', content: '' }] })}>Add Note</Button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Resources</label>
+          <div className="space-y-2">
+            {form.resources.map((res, idx) => (
+              <div key={idx} className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <Input placeholder="Title" value={res.title} onChange={(e) => {
+                  const updated = [...form.resources];
+                  updated[idx] = { ...updated[idx], title: e.target.value };
+                  setForm({ ...form, resources: updated });
+                }} />
+                <Input placeholder="Description" value={res.description} onChange={(e) => {
+                  const updated = [...form.resources];
+                  updated[idx] = { ...updated[idx], description: e.target.value };
+                  setForm({ ...form, resources: updated });
+                }} />
+                <Input placeholder="URL" value={res.url} onChange={(e) => {
+                  const updated = [...form.resources];
+                  updated[idx] = { ...updated[idx], url: e.target.value };
+                  setForm({ ...form, resources: updated });
+                }} />
+                <Input placeholder="Type (article/video/pdf)" value={res.type} onChange={(e) => {
+                  const updated = [...form.resources];
+                  updated[idx] = { ...updated[idx], type: e.target.value };
+                  setForm({ ...form, resources: updated });
+                }} />
+                {form.resources.length > 1 && (
+                  <Button type="button" variant="outline" className="col-span-2 md:col-span-4 text-red-600 hover:bg-red-50" onClick={() => setForm({ ...form, resources: form.resources.filter((_, i) => i !== idx) })}>Remove</Button>
+                )}
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={() => setForm({ ...form, resources: [...form.resources, { title: '', description: '', url: '', type: 'article' }] })}>Add Resource</Button>
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end pt-2">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button
+            onClick={async () => {
+              if (!form.title.trim()) return;
+              setSubmitting(true);
+              await onSubmit({
+                title: form.title.trim(),
+                content: form.content.trim() || undefined,
+                duration: form.duration ? Number(form.duration) : undefined,
+                type: form.type,
+                mediaUrl: form.mediaUrl.trim() || undefined,
+                notes: form.notes.filter(n => n.title.trim() || n.content.trim()).map(n => ({ title: n.title.trim(), content: n.content.trim() })),
+                resources: form.resources.filter(r => r.title.trim() || r.url.trim()).map(r => ({ title: r.title.trim(), description: r.description.trim(), url: r.url.trim(), type: r.type.trim() })),
+              });
+              setSubmitting(false);
+            }}
+            disabled={submitting}
+          >
+            {submitting ? 'Adding...' : 'Add Lesson'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  function ModuleForm({ onSubmit, onCancel }: { onSubmit: (payload: { title: string; description?: string; order: number; }) => void | Promise<void>, onCancel: () => void }) {
+    const [form, setForm] = useState<{ title: string; description: string; order: string }>({
+      title: '',
+      description: '',
+      order: String((course?.modules?.length || 0) + 1),
+    });
+    const [submitting, setSubmitting] = useState(false);
+    return (
+      <div className="space-y-3">
+        <div>
+          <label className="block text-sm font-medium mb-1">Title</label>
+          <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Module title" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Description</label>
+          <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Order</label>
+          <Input value={form.order} onChange={(e) => setForm({ ...form, order: e.target.value })} type="number" min={1} />
+        </div>
+        <div className="flex gap-2 justify-end pt-2">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button
+            onClick={async () => {
+              if (!form.title.trim()) return;
+              setSubmitting(true);
+              await onSubmit({
+                title: form.title.trim(),
+                description: form.description.trim() || undefined,
+                order: form.order ? Number(form.order) : ((course?.modules?.length || 0) + 1),
+              });
+              setSubmitting(false);
+            }}
+            disabled={submitting}
+          >
+            {submitting ? 'Adding...' : 'Add Module'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (courseLoading) {
     return (
@@ -372,16 +743,126 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Category</label>
-                    <Input
-                      value={editData.category || ''}
-                      onChange={(e) => setEditData({ ...editData, category: e.target.value })}
-                    />
+                    {categoriesLoading ? (
+                      <div className="text-sm text-gray-500">Loading categories...</div>
+                    ) : (
+                      <Select value={editData.categoryId || ''} onValueChange={(value) => setEditData({ ...editData, categoryId: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((cat: any) => (
+                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Search Tags</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(editData.tags || []).map((tag: string, idx: number) => (
+                      <span key={`${tag}-${idx}`} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
+                        <Tag className="h-3 w-3" />
+                        {tag}
+                        <button
+                          className="ml-1 text-blue-700 hover:text-blue-900"
+                          onClick={() => setEditData({ ...editData, tags: (editData.tags || []).filter((t: string, i: number) => i !== idx) })}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type a tag and press Enter"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const value = newTag.trim();
+                          if (value && !(editData.tags || []).includes(value)) {
+                            setEditData({ ...editData, tags: [ ...(editData.tags || []), value ] });
+                          }
+                          setNewTag('');
+                        }
+                      }}
+                      onBlur={() => {
+                        const value = newTag.trim();
+                        if (value && !(editData.tags || []).includes(value)) {
+                          setEditData({ ...editData, tags: [ ...(editData.tags || []), value ] });
+                        }
+                        setNewTag('');
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const value = newTag.trim();
+                        if (value && !(editData.tags || []).includes(value)) {
+                          setEditData({ ...editData, tags: [ ...(editData.tags || []), value ] });
+                        }
+                        setNewTag('');
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Badges</label>
+                  {badgesLoading ? (
+                    <div className="text-sm text-gray-500">Loading badges...</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {badges.map((b: any) => {
+                        const checked = (editData.badgeIds || []).includes(b.id);
+                        return (
+                          <label key={b.id} className="flex items-center gap-2 p-2 rounded border hover:bg-gray-50 cursor-pointer">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(val) => {
+                                const current: string[] = editData.badgeIds || [];
+                                setEditData({
+                                  ...editData,
+                                  badgeIds: val ? [...current, b.id] : current.filter((id) => id !== b.id),
+                                })
+                              }}
+                            />
+                            <span className="text-sm">{b.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium">Published</label>
+                  <button
+                    type="button"
+                    className={`px-3 py-1 rounded text-xs border ${editData.isPublished ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}
+                    onClick={() => setEditData({ ...editData, isPublished: !editData.isPublished })}
+                  >
+                    {editData.isPublished ? 'Yes' : 'No'}
+                  </button>
+                </div>
                 <div className="flex gap-2">
-                  <Button onClick={saveCourse} className="bg-blue-600 hover:bg-blue-700">
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Course
+                  <Button onClick={saveCourse} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Course
+                      </>
+                    )}
                   </Button>
                   <Button variant="outline" onClick={cancelEdit}>
                     <X className="h-4 w-4 mr-2" />
@@ -401,18 +882,13 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
           <h3 className="text-xl font-bold mb-2">Course Description</h3>
           <p className="text-muted-foreground mb-8">
             {editingCourse ? (
-              <Textarea
-                value={editData.description || ''}
-                onChange={(e) => setEditData({ ...editData, description: e.target.value })}
-                rows={3}
-                className="border-0 p-0 bg-transparent"
-              />
+              <span className="whitespace-pre-wrap">{editData.description || ''}</span>
             ) : (
               <>
-            {course.description}
-            <Link href="#" className="text-blue-600 hover:underline ml-1">
-              Read more
-            </Link>
+                {course.description}
+                <Link href="#" className="text-blue-600 hover:underline ml-1">
+                  Read more
+                </Link>
               </>
             )}
           </p>
@@ -423,6 +899,45 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
               <li key={index}>{objective}</li>
             )) || <li>No learning objectives available.</li>}
           </ul>
+
+          <h3 className="text-xl font-bold mb-2">Badges</h3>
+          {editingCourse ? (
+            <div className="flex flex-wrap gap-2 mb-8">
+              {badges
+                .filter((b: any) => (editData.badgeIds || []).includes(b.id))
+                .map((b: any) => (
+                  <span key={b.id} className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">
+                    <Award className="h-3 w-3" />
+                    {b.name}
+                  </span>
+                ))}
+              {(editData.badgeIds || []).length === 0 && (
+                <span className="text-sm text-gray-500">No badges selected.</span>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 mb-8">
+              {Array.isArray(course.badges) && course.badges.length > 0 ? (
+                course.badges.map((b: any) => (
+                  <span key={b.id || b.name} className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">
+                    <Award className="h-3 w-3" />
+                    {b.name || b}
+                  </span>
+                ))
+              ) : Array.isArray(course.badgeIds) && course.badgeIds.length > 0 ? (
+                badges
+                  .filter((b: any) => course.badgeIds.includes(b.id))
+                  .map((b: any) => (
+                    <span key={b.id} className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-full border border-purple-200">
+                      <Award className="h-3 w-3" />
+                      {b.name}
+                    </span>
+                  ))
+              ) : (
+                <span className="text-sm text-gray-500">No badges assigned.</span>
+              )}
+            </div>
+          )}
 
           <h3 className="text-xl font-bold mb-4">Modules</h3>
           <Accordion type="single" collapsible className="w-full">
@@ -521,11 +1036,11 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
                               )}
                               {editingLessonId === lesson.id && (
                                 <div className="flex gap-1">
-                                  <Button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      saveLesson(lesson.id);
-                                    }}
+                              <Button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  saveLesson(module.id, lesson.id);
+                                }}
                                     className="h-5 px-2 bg-green-600 hover:bg-green-700"
                                   >
                                     <Save className="h-3 w-3" />
@@ -616,6 +1131,115 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
                                   placeholder="https://example.com/media.mp4"
                                 />
                               </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                  <label className="block text-sm font-medium mb-2">Notes</label>
+                                  <div className="space-y-2">
+                                    {(editData.notes || []).map((note: any, idx: number) => (
+                                      <div key={idx} className="p-3 rounded border bg-white">
+                                        <Input
+                                          placeholder="Title"
+                                          value={note.title || ''}
+                                          onChange={(e) => {
+                                            const updated = [...(editData.notes || [])];
+                                            updated[idx] = { ...updated[idx], title: e.target.value };
+                                            setEditData({ ...editData, notes: updated });
+                                          }}
+                                          className="mb-2"
+                                        />
+                                        <Textarea
+                                          placeholder="Content"
+                                          value={note.content || ''}
+                                          onChange={(e) => {
+                                            const updated = [...(editData.notes || [])];
+                                            updated[idx] = { ...updated[idx], content: e.target.value };
+                                            setEditData({ ...editData, notes: updated });
+                                          }}
+                                          rows={2}
+                                        />
+                                        <div className="flex justify-end mt-2">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="text-red-600 hover:bg-red-50"
+                                            onClick={() => {
+                                              const updated = (editData.notes || []).filter((_: any, i: number) => i !== idx);
+                                              setEditData({ ...editData, notes: updated });
+                                            }}
+                                          >
+                                            Remove
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={() => setEditData({ ...editData, notes: [ ...(editData.notes || []), { title: '', content: '' } ] })}
+                                    >
+                                      Add Note
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-2">Resources</label>
+                                  <div className="space-y-2">
+                                    {(editData.resources || []).map((res: any, idx: number) => (
+                                      <div key={idx} className="p-3 rounded border bg-white">
+                                        <Input
+                                          placeholder="Title"
+                                          value={res.title || ''}
+                                          onChange={(e) => {
+                                            const updated = [...(editData.resources || [])];
+                                            updated[idx] = { ...updated[idx], title: e.target.value };
+                                            setEditData({ ...editData, resources: updated });
+                                          }}
+                                          className="mb-2"
+                                        />
+                                        <Input
+                                          placeholder="Description"
+                                          value={res.description || ''}
+                                          onChange={(e) => {
+                                            const updated = [...(editData.resources || [])];
+                                            updated[idx] = { ...updated[idx], description: e.target.value };
+                                            setEditData({ ...editData, resources: updated });
+                                          }}
+                                          className="mb-2"
+                                        />
+                                        <Input
+                                          placeholder="URL"
+                                          value={res.url || ''}
+                                          onChange={(e) => {
+                                            const updated = [...(editData.resources || [])];
+                                            updated[idx] = { ...updated[idx], url: e.target.value };
+                                            setEditData({ ...editData, resources: updated });
+                                          }}
+                                        />
+                                        <div className="flex justify-end mt-2">
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            className="text-red-600 hover:bg-red-50"
+                                            onClick={() => {
+                                              const updated = (editData.resources || []).filter((_: any, i: number) => i !== idx);
+                                              setEditData({ ...editData, resources: updated });
+                                            }}
+                                          >
+                                            Remove
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      onClick={() => setEditData({ ...editData, resources: [ ...(editData.resources || []), { title: '', description: '', url: '' } ] })}
+                                    >
+                                      Add Resource
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ) : (
                             <>
@@ -691,16 +1315,16 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
                     )) || <div className="text-gray-500">No lessons in this module.</div>}
                   </Accordion>
                  {/* Add Lesson Button */}
-                 <div className="mt-4">
-                   <Button
-                     variant="outline"
-                     onClick={() => addLesson(module.id)}
-                     className="flex items-center gap-2 text-blue-600 hover:bg-blue-50"
-                   >
-                     <Plus className="h-4 w-4" />
-                     Add Lesson
-                   </Button>
-                 </div>
+                  <div className="mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => openAddLesson(module.id)}
+                      className="flex items-center gap-2 text-blue-600 hover:bg-blue-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Lesson
+                    </Button>
+                  </div>
                  {/* Quizzes Section */}
                  {module.quizzes && module.quizzes.length > 0 && (
                    <div className="mt-4">
@@ -786,6 +1410,13 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
             )) || <div className="text-gray-500">No modules available.</div>}
           </Accordion>
 
+          <div className="mt-4">
+            <Button variant="outline" onClick={openAddModule} className="flex items-center gap-2 text-blue-600 hover:bg-blue-50">
+              <Plus className="h-4 w-4" />
+              Add Module
+            </Button>
+          </div>
+
           <div className="flex justify-center space-x-4 mt-10">
             <Button className="bg-blue-600 hover:bg-blue-700 text-white">Unpublish Course</Button>
             <Link href={`/course-management/new-module?courseId=${course.id}`}>
@@ -798,6 +1429,48 @@ export default function CourseViewPage({ params }: { params: Promise<{ courseId:
             </Link>
           </div>
         </section>
+
+        {showAddLessonModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+            <div className="absolute inset-0" onClick={() => { setShowAddLessonModal(false); setLessonModalModuleId(null); }} />
+            <div className="relative w-full max-w-4xl rounded-xl shadow-lg z-10 bg-white max-h-[85vh] overflow-y-auto">
+              <div className="p-6 border-b">
+                <h3 className="text-lg font-semibold">Add Lesson</h3>
+              </div>
+              <div className="p-6 space-y-3">
+                <LessonForm
+                  onCancel={() => { setShowAddLessonModal(false); setLessonModalModuleId(null); }}
+                  onSubmit={async (payload) => {
+                    if (!lessonModalModuleId) return;
+                    await handleCreateLesson(lessonModalModuleId, payload);
+                    setShowAddLessonModal(false);
+                    setLessonModalModuleId(null);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showAddModuleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="absolute inset-0" onClick={() => setShowAddModuleModal(false)} />
+            <div className="relative w-full max-w-lg rounded-xl shadow-lg z-10 bg-white">
+              <div className="p-6 border-b">
+                <h3 className="text-lg font-semibold">Add Module</h3>
+              </div>
+              <div className="p-6 space-y-3">
+                <ModuleForm
+                  onCancel={() => setShowAddModuleModal(false)}
+                  onSubmit={async (payload) => {
+                    await handleCreateModule(payload);
+                    setShowAddModuleModal(false);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )
