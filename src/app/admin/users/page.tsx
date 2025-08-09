@@ -43,7 +43,7 @@ function AdminRegisterModal({ open, onClose, onSuccess }: { open: boolean, onClo
       return;
     }
     try {
-      const res = await fetch(buildApiUrl('admin/auth/register'), {
+      const res = await fetch(buildApiUrl('auth/bootstrap-super-admin'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
