@@ -3,7 +3,7 @@
 import AdminSidebar from "@/components/AdminSidebar"
 import { Button } from "@/components/ui/button"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { buildApiUrl } from "@/lib/utils"
+import { buildApiUrl, decodeJWT } from "@/lib/utils"
 import { Edit } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from 'react';
@@ -102,17 +102,12 @@ export default function CoursePreview() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [modalColor, setModalColor] = useState<string|undefined>(undefined);
-  // Extract userId from JWT token's 'sub' field
-  function parseJwt(token: string) {
-    try {
-      return JSON.parse(atob(token.split('.')[1]));
-    } catch (e) {
-      return null;
-    }
-  }
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const payload = token ? parseJwt(token) : null;
-  const userId = payload?.sub;
+  // Extract userId from JWT (supports both user and admin tokens)
+  const token = typeof window !== 'undefined' 
+    ? (localStorage.getItem('admin_token') || localStorage.getItem('token'))
+    : null;
+  const decoded = token ? decodeJWT(token) : null;
+  const userId = decoded?.id || null;
 
   useEffect(() => {
     setCourseData(getCourseData());
@@ -141,7 +136,10 @@ export default function CoursePreview() {
       ));
       const res = await fetch(buildApiUrl('courses/create-with-modules-lessons'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload)
       });
       if (res.ok) {

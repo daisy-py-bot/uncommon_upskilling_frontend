@@ -5,6 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// API base URL - can be changed globally
+// const API_BASE_URL = "http://64.227.102.139:3001";
+// const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://uncommon-upskilling.duckdns.org";
+// export const API_BASE_URL = "http://localhost:3001";
+
 // API base URL - configurable via env for deployments
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 
@@ -49,7 +54,7 @@ export function decodeJWT(token: string | null): {
       tagline: payload.tagline,
       role: payload.role,
     };
-  } catch (e) {
+  } catch {
     return null;
   }
 }
