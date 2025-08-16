@@ -30,6 +30,13 @@ function getModulesData() {
   }
 }
 
+// Validate lesson type to ensure it matches backend enum
+function validateLessonType(type: string): string {
+  const validTypes = ['video', 'reading', 'quiz', 'pdf', 'doc', 'image'];
+  const normalizedType = type.toLowerCase();
+  return validTypes.includes(normalizedType) ? normalizedType : 'reading';
+}
+
 // Utility: Transform localStorage data to API payload for /courses/create-with-modules-lessons
 function transformCourseDataForApi(localData: any, userId: string) {
   return {
@@ -76,7 +83,7 @@ function transformCourseDataForApi(localData: any, userId: string) {
             type: res.type || "article"
           })),
           duration: parseInt(lesson.duration) || 0,
-          type: (lesson.type || 'video').toLowerCase(),
+          type: validateLessonType(lesson.type || 'video'),
           order: lIdx + 1 // <-- Ensure unique order for each lesson
         };
       })

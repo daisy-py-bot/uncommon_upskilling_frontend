@@ -85,7 +85,7 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
     const url = urlInput.trim();
     
     // Determine file type from URL
-    let fileType = 'other';
+    let fileType = 'reading'; // Default to reading for unknown types
     if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) fileType = 'image';
     else if (url.match(/\.(mp4|avi|mov|wmv|flv|webm)$/i)) fileType = 'video';
     else if (url.match(/\.pdf$/i)) fileType = 'pdf';
@@ -138,7 +138,7 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
       
       // Create temporary blob URL for immediate preview
       const tempUrl = URL.createObjectURL(file);
-      let fileType = 'other';
+      let fileType = 'reading'; // Default to reading for unknown types
       if (file.type.startsWith('image/')) fileType = 'image';
       else if (file.type.startsWith('video/')) fileType = 'video';
       else if (file.type === 'application/pdf') fileType = 'pdf';
@@ -436,7 +436,7 @@ export function LessonBlock({ lessonNumber, lesson, onChange, onDelete }: Lesson
                             {mediaItem.fileType === "image" && <ImageIcon className="h-4 w-4 text-gray-600" />}
                             {mediaItem.fileType === "video" && <Video className="h-4 w-4 text-gray-600" />}
                             {mediaItem.fileType === "pdf" && <FileText className="h-4 w-4 text-gray-600" />}
-                            {mediaItem.fileType === "other" && <File className="h-4 w-4 text-gray-600" />}
+                            {mediaItem.fileType === "reading" && <File className="h-4 w-4 text-gray-600" />}
                             <div>
                               <p className="font-medium text-sm">{mediaItem.fileName}</p>
                               <p className="text-xs text-muted-foreground">
